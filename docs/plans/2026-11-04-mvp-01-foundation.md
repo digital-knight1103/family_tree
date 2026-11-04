@@ -34,7 +34,8 @@ Ten plan obejmuje fazy 1–3 z sekcji 11 specyfikacji. Kolejne plany powstaną p
 - Komunikat konfliktu dokładnie: **„Dane zmieniły się w innej karcie, odśwież”**.
 - Belka demo dokładnie: **„To są dane przykładowe. Zmiany nie są zapisywane.”**, przycisk: **„Rozpocznij własne drzewo”**.
 - Kopie: `data/family/.backups/family-YYYY-MM-DD_HH-mm-ss-SSS.json`, maks. **20**. Rename: do **5** prób z rosnącym odstępem (50, 100, 200, 300, 350 ms), dla `EPERM`/`EBUSY`/`EACCES`.
-- Conventional Commits, praca na gałęzi `feat/foundation` (z `main`), na końcu PR do `main`. Każdy commit kończy się linią `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- Dane i pomocniki wyłącznie testowe leżą w `tests/fixtures/` (alias `@tests/`), nigdy w `src/`.
+- Conventional Commits. Jedna gałąź i jeden PR do `main` na fazę: `chore/skeleton-ci` (Task 1–5), `feat/domain-model` (Task 6–11), `feat/data-persistence` (Task 12–20). Gałąź fazy powstaje z `main`, jeśli PR poprzedniej fazy jest już scalony, a w przeciwnym razie z gałęzi poprzedniej fazy (wtedy bazą PR jest ta gałąź). **Po każdej fazie praca się zatrzymuje:** podsumowanie (co zrobione, wynik weryfikacji, co dalej) i czekanie na „dalej” od autora. Każdy commit kończy się linią `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Review Focus
 
@@ -55,8 +56,8 @@ Ten plan obejmuje fazy 1–3 z sekcji 11 specyfikacji. Kolejne plany powstaną p
 
 - [ ] **Step 1: Utwórz gałąź**
 
-Run: `git checkout main && git pull && git checkout -b feat/foundation`
-Expected: `Switched to a new branch 'feat/foundation'`. Jeśli spec i plan nie są jeszcze na `main`, zrób to z gałęzi `docs/mvp-spec`.
+Run: `git checkout docs/mvp-spec && git checkout -b chore/skeleton-ci`
+Expected: `Switched to a new branch 'chore/skeleton-ci'`. Gałąź zawiera commity ze specyfikacją i planem, więc trafią do `main` razem z PR fazy 1.
 
 - [ ] **Step 2: Utwórz `.gitattributes`**
 
@@ -104,7 +105,7 @@ Jeśli nic się nie zmieniło, zanotuj to w opisie PR („renormalizacja bez zmi
 - Test: `src/app/App.spec.ts`
 
 **Interfaces:**
-- Produces: alias `@/` → `src/`, alias `@seed/` → `data/seed/` (używany tylko przez `StaticFamilyRepository`, Task 15), skrypty pnpm: `dev`, `build`, `preview`, `test` (vitest run), `test:watch`, `typecheck` (`vue-tsc --build --force`), `lint`, `format`, `test:e2e`, `validate:data`, `check:leaks` (dwa ostatnie dodają Task 11 i Task 19).
+- Produces: alias `@/` → `src/`, alias `@seed/` → `data/seed/` (używany tylko przez `StaticFamilyRepository`, Task 15), alias `@tests/` → `tests/` (tylko w plikach `*.spec.ts`; `tsconfig.app.json` obejmuje `tests/fixtures/**`, a ESLint zabrania importu `@tests/` w plikach innych niż `*.spec.ts`), skrypty pnpm: `dev`, `build`, `preview`, `test` (vitest run), `test:watch`, `typecheck` (`vue-tsc --build --force`), `lint`, `format`, `test:e2e`, `validate:data`, `check:leaks` (dwa ostatnie dodają Task 11 i Task 19).
 
 - [ ] **Step 1: Zainstaluj zależności**
 
@@ -249,7 +250,7 @@ Każdy w formacie: Kontekst, Decyzja, Konsekwencje (po polsku, maks. ok. 20 lini
 
 - [ ] **Step 4: `CLAUDE.md`**
 
-Sekcje: opis projektu (2–3 zdania + link do specu i planów), komendy (`pnpm dev`, `test`, `test:e2e`, `lint`, `typecheck`, `build`, `validate:data`, `check:leaks`), struktura folderów, konwencje z Global Constraints, zasady danych („nigdy nie commituj `data/family/`”, seed tylko wymyślony), workflow (gałęzie feature, Conventional Commits, weryfikacja przed ogłoszeniem ukończenia).
+Sekcje: opis projektu (2–3 zdania + link do specu i planów), komendy (`pnpm dev`, `test`, `test:e2e`, `lint`, `typecheck`, `build`, `validate:data`, `check:leaks`), struktura folderów (w tym `tests/e2e/` na testy Playwright i `tests/fixtures/` na dane i pomocniki testowe), konwencje z Global Constraints, zasady danych („nigdy nie commituj `data/family/`”, seed tylko wymyślony), workflow (gałęzie feature, Conventional Commits, weryfikacja przed ogłoszeniem ukończenia).
 
 - [ ] **Step 5: `README.md`**
 
@@ -266,6 +267,11 @@ Expected: wszystko PASS.
 git add -A
 git commit -m "ci: add CI workflow; docs: add CLAUDE.md, README, ADRs and env example"
 ```
+
+- [ ] **Step 8: Koniec fazy 1: weryfikacja, PR, zatrzymanie**
+
+Run: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e`
+Expected: wszystko PASS. Potem `git push -u origin chore/skeleton-ci` i `gh pr create --base main` (opis kończy się linią `🤖 Generated with [Claude Code](https://claude.com/claude-code)`). Sprawdź, że CI na PR przechodzi (`gh pr checks --watch`). **Zatrzymaj się:** podsumowanie dla autora i czekanie na „dalej”.
 
 ---
 
@@ -443,7 +449,8 @@ git commit -m "feat(domain): add Zod schema for family data"
 
 **Files:**
 - Create: `src/domain/relations.ts`
-- Test: `src/domain/relations.spec.ts`, `src/domain/test-fixtures.ts` (budowniczy danych testowych, eksportowany tylko dla testów)
+- Test: `src/domain/relations.spec.ts`
+- Create: `tests/fixtures/build-family.ts` (budowniczy danych testowych, importowany przez `@tests/fixtures/build-family`)
 
 **Interfaces:**
 - Consumes: `FamilyData`, `Person`, `Union` z Task 8.
@@ -458,7 +465,7 @@ git commit -m "feat(domain): add Zod schema for family data"
   export function descendantIds(data: FamilyData, personId: string): Set<string>
   export function isUnknownPerson(p: Person): boolean                          // givenNames i surname puste po trim
   ```
-  `test-fixtures.ts`: `buildFamily(spec: { persons: Array<Partial<Person> & { id: string }>; parentChild?: Array<[parent: string, child: string, type?: ParentChild['type']]>; unions?: Array<[a: string, b: string]> }): FamilyData`.
+  `tests/fixtures/build-family.ts`: `buildFamily(spec: { persons: Array<Partial<Person> & { id: string }>; parentChild?: Array<[parent: string, child: string, type?: ParentChild['type']]>; unions?: Array<[a: string, b: string]> }): FamilyData`.
 
 - [ ] **Step 1: Napisz testy**
 
@@ -477,7 +484,7 @@ Rodzina: dziadkowie A+B → dzieci C (ur. 1965) i D (ur. ok. 1969); C+E → F; G
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/domain/relations.ts src/domain/relations.spec.ts src/domain/test-fixtures.ts
+git add src/domain/relations.ts src/domain/relations.spec.ts tests/fixtures/build-family.ts
 git commit -m "feat(domain): add relation queries"
 ```
 
@@ -592,6 +599,11 @@ Expected: PASS i wypisane „OK: data/seed/demo-family.json”.
 git add data/seed scripts package.json .github/workflows/ci.yml
 git commit -m "feat(data): add demo family seed and data validation script"
 ```
+
+- [ ] **Step 7: Koniec fazy 2: weryfikacja, PR, zatrzymanie**
+
+Run: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm validate:data --seed && pnpm build && pnpm test:e2e`
+Expected: wszystko PASS. Potem push gałęzi `feat/domain-model`, `gh pr create` (baza według reguły z Global Constraints), CI zielone. **Zatrzymaj się:** podsumowanie dla autora i czekanie na „dalej”.
 
 ---
 
@@ -997,10 +1009,10 @@ Expected: wszystko PASS. `check:leaks` nie wymaga obecności kanarka, tylko zgł
 
 - [ ] **Step 3: Zaktualizuj `CLAUDE.md`**, jeśli komendy lub struktura się zmieniły. Commit `docs: update CLAUDE.md`.
 
-- [ ] **Step 4: Push i PR** (po potwierdzeniu przez autora)
+- [ ] **Step 4: Koniec fazy 3: push, PR, zatrzymanie**
 
 ```bash
-git push -u origin feat/foundation
-gh pr create --base main --title "feat: project foundation, domain model and safe data persistence" --body "<opis + checklista weryfikacji>"
+git push -u origin feat/data-persistence
+gh pr create --title "feat: safe data persistence with revisions, backups and leak protection" --body "<opis + checklista weryfikacji>"
 ```
-Opis PR kończy się linią `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
+Baza PR według reguły z Global Constraints. Opis kończy się linią `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. CI zielone. **Zatrzymaj się:** podsumowanie dla autora i czekanie na „dalej” (następny krok: plan 02).
