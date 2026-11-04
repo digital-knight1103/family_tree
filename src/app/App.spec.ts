@@ -10,7 +10,7 @@ describe('App', () => {
       history: createMemoryHistory(),
       routes: [{ path: '/', component: { template: '<div />' } }],
     })
-    router.push('/')
+    await router.push('/')
     await router.isReady()
 
     const wrapper = mount(App, { global: { plugins: [createPinia(), router] } })

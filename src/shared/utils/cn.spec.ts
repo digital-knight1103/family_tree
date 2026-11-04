@@ -7,6 +7,6 @@ describe('cn', () => {
   })
 
   it('pomija wartości fałszywe', () => {
-    expect(cn('a', false && 'b', 'c')).toBe('a c')
+    expect(cn('a', false, null, undefined, 'c')).toBe('a c')
   })
 })
