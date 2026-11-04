@@ -1,7 +1,7 @@
 # Drzewo Rodzinne — specyfikacja MVP
 
 - **Data:** 2026-11-04
-- **Status:** do akceptacji
+- **Status:** zaakceptowana (2026-11-04, z poprawkami: uszkodzony plik, kolejka zapisów, kopie zapasowe, ochrona przed wyciekiem, prototyp układu, kolejność realizacji)
 - **Autor:** Paweł Bokszczanin (decyzje produktowe), Claude (propozycje oznaczone jako „decyzja wykonawcy”)
 
 ## 1. Cel i kontekst
@@ -65,6 +65,12 @@ Publikacja drzewa w internecie jest planowana później i nie należy do MVP. Ar
 ### 4.2 Zachowanie przy braku danych
 - Jeśli w folderze danych nie ma `family.json`, aplikacja w trybie dev pokazuje dane demo w trybie tylko do odczytu, z belką „To są dane przykładowe. Zmiany nie są zapisywane.” i przyciskiem **„Rozpocznij własne drzewo”**. Przycisk tworzy pusty `family.json` w folderze danych i otwiera formularz pierwszej osoby. Plik seed nigdy nie jest nadpisywany.
 
+### 4.2a Uszkodzony plik danych
+- Jeśli `family.json` istnieje, ale nie przechodzi walidacji (niepoprawny JSON, schemat Zod lub reguły relacji z 5.2), aplikacja pokazuje **ekran błędu** z czytelnym opisem problemu (lista błędów ze ścieżką pola, np. `persons[3].birth.date.month`) i pełną ścieżką pliku na dysku.
+- W tym stanie aplikacja **niczego nie zapisuje** (endpoint zapisu odrzuca żądania, dopóki plik jest niepoprawny) i **nie przełącza się na dane demo**.
+- Ekran ma przycisk „Spróbuj ponownie” (ponowny odczyt po ręcznej naprawie pliku) i wskazówkę, że poprzednie wersje są w `.backups/` (4.4) oraz w historii repozytorium danych.
+- Testy: wtyczka zwraca błąd walidacji dla uszkodzonego pliku i odrzuca zapis; aplikacja pokazuje ekran błędu zamiast drzewa i nie wywołuje zapisu (unit + e2e).
+
 ### 4.3 Zapis
 - Każda zmiana zapisuje się automatycznie, bez przycisku „Zapisz”. Pasek górny pokazuje stan: „Zapisywanie…”, „Zapisano” albo „Błąd zapisu” z możliwością ponowienia.
 - Wtyczka Vite (`vite-plugins/dev-data-api.ts`) działa wyłącznie w `pnpm dev` i udostępnia:
@@ -74,6 +80,23 @@ Publikacja drzewa w internecie jest planowana później i nie należy do MVP. Ar
   - usunięcie zdjęcia,
   - serwowanie plików z `photos/`.
 - Decyzja wykonawcy: zapis z debounce ok. 500 ms dla pól tekstowych. Operacje strukturalne (dodanie lub usunięcie osoby czy relacji) zapisują się natychmiast.
+- **Kolejka zapisów (klient):**
+  - wszystkie zapisy przechodzą przez jedną kolejkę i w danej chwili trwa najwyżej jeden zapis;
+  - zapis zawsze wysyła **najnowszy stan**: zmiany nagromadzone w trakcie trwającego zapisu łączą się w jeden kolejny zapis, a starsze stany nie są wysyłane;
+  - przed zamknięciem lub przeładowaniem karty niezapisane zmiany są wysyłane od razu (`fetch` z `keepalive`);
+  - jeśli zapis trwa lub czeka w kolejce, przeglądarka pokazuje standardowe ostrzeżenie `beforeunload`.
+- **Rewizja pliku:**
+  - `family.json` ma pole `revision` (liczba całkowita), które wtyczka zwiększa przy każdym udanym zapisie;
+  - klient wysyła rewizję, na której oparł zmiany;
+  - jeśli rewizja w pliku jest nowsza (np. zapis z drugiej karty), wtyczka odrzuca zapis (HTTP 409);
+  - aplikacja pokazuje wtedy komunikat **„Dane zmieniły się w innej karcie, odśwież”** i wstrzymuje dalsze zapisy do czasu odświeżenia.
+- Testy: łączenie zapisów w kolejce (tylko najnowszy stan, nigdy dwa naraz), flush przed zamknięciem, odrzucenie starszej rewizji przez wtyczkę, obsługa 409 w UI.
+
+### 4.4 Kopie zapasowe i odporność zapisu
+- Przed każdym zapisem wtyczka kopiuje bieżący `family.json` do `data/family/.backups/family-YYYY-MM-DD_HH-mm-ss-SSS.json` (czas lokalny, milisekundy, żeby nazwy się nie powtarzały). Zostaje **20 najnowszych** kopii, a starsze są usuwane.
+- Zapis atomowy: plik tymczasowy, potem rename. Na Windows rename potrafi chwilowo zwrócić `EPERM`/`EBUSY` (antywirus, indeksowanie), więc wtyczka ponawia go kilka razy (decyzja wykonawcy: do 5 prób z rosnącym odstępem, łącznie ok. 1 s). Po wyczerpaniu prób zwraca błąd, a UI pokazuje „Błąd zapisu” z możliwością ponowienia.
+- Decyzja wykonawcy: repozytorium danych powinno ignorować `.backups/` (wzór `.gitignore` dla repo danych w README).
+- Testy: tworzenie kopii i rotacja do 20, ponawianie przy symulowanym `EPERM`, błąd po wyczerpaniu prób.
 - Cały dostęp do danych w aplikacji idzie przez `src/data/repository.ts` (interfejs + implementacja HTTP dla dev). W buildzie produkcyjnym repozytorium ładuje dane statycznie i jest tylko do odczytu, a edytor jest wyłączony. Build w CI używa danych seed.
 
 ## 5. Model danych
@@ -82,7 +105,8 @@ Schemat Zod w `src/domain/schema.ts`. Typy TS wyprowadzane z niego (`z.infer`).
 
 ```jsonc
 {
-  "version": 1,
+  "version": 1,                       // wersja schematu
+  "revision": 42,                     // licznik zapisów, zarządzany przez wtyczkę (4.3)
   "settings": {
     "selfPersonId": "p_..."          // osoba „Ja” dla przycisku „Wyśrodkuj na mnie”; opcjonalne
   },
@@ -172,9 +196,12 @@ Wymagane właściwości wizualne:
 - linia do dzieci wychodzi ze środka linii łączącej parę, a dziecko z jednym znanym rodzicem łączy się bezpośrednio z tym rodzicem,
 - połączenia ortogonalne, z jak najmniejszą liczbą przecięć,
 - rodzeństwo uporządkowane według daty urodzenia (klucz z 5.1),
-- układ jest deterministyczny: te same dane dają ten sam obraz, a dodanie osoby nie przetasowuje całego drzewa bez potrzeby.
+- układ jest **deterministyczny** (wymagane): te same dane dają ten sam obraz.
+- **Stabilność** (cel, nie kryterium akceptacji): dodanie osoby nie powinno bez potrzeby przetasowywać całego drzewa.
 
-Przekształcenie danych na węzły i krawędzie (`src/domain/tree-layout/`) jest czystą funkcją TS bez Vue, z testami jednostkowymi. Sposób modelowania par dla elkjs (np. węzeł pomocniczy związku) zostaje wykonawcy.
+Przekształcenie danych na węzły i krawędzie (`src/domain/tree-layout/`) jest czystą funkcją TS bez Vue, z testami jednostkowymi.
+
+**Punkt kontrolny:** faza wizualizacji zaczyna się od **prototypu na danych seed**: elkjs (algorytm warstwowy) z węzłami pomocniczymi związków. Wynik prototypu (zrzut ekranu + ocena względem każdej właściwości powyżej) trafia do autora. Jeśli prototyp nie spełnia wymagań, wykonawca **wraca do autora z alternatywą** (np. własny algorytm warstwowy) i nie kontynuuje prac nad drzewem bez jego decyzji.
 
 Osoby niepołączone z resztą drzewa wyświetlają się jako osobne grupy obok, a nie znikają.
 
@@ -216,7 +243,11 @@ Osoby niepołączone z resztą drzewa wyświetlają się jako osobne grupy obok,
 - Testy e2e (Playwright) na danych seed: start → ekran powitalny → drzewo; wyszukanie osoby i otwarcie karty; dodanie dziecka przez „+” i jego pojawienie się w drzewie; edycja daty z kwalifikatorem; przełączenie motywu. Testy e2e uruchamiają serwer dev (z wtyczką zapisu) na tymczasowym folderze danych (`FAMILY_DATA_DIR`) z kopią seed, nigdy na samym seed.
 - `scripts/validate-data.ts` waliduje plik schematem i regułami relacji. Uruchamiany w CI na seed, a lokalnie (`pnpm validate:data`) na folderze danych.
 - `scripts/optimize-photos.ts` jednorazowo konwertuje do WebP zdjęcia wrzucone do `photos/` ręcznie (te same parametry co upload).
-- **GitHub Actions `ci.yml`:** pnpm install, lint, typecheck, testy jednostkowe, walidacja seed, build, e2e. Uruchamiany na PR i push do main.
+- **Ochrona przed wyciekiem danych (test w CI):**
+  - repozytorium kodu nie śledzi żadnych plików z `data/family/` (sprawdzenie `git ls-files`) ani zdjęć poza dozwolonymi zasobami;
+  - zawartość `dist/` po buildzie zawiera wyłącznie dane z `data/seed/` (sprawdzenie, że osadzone dane są identyczne z seed i że w `dist/` nie ma plików z folderu danych ani zdjęć spoza seed);
+  - test działa jako skrypt w CI po buildzie i można go uruchomić lokalnie.
+- **GitHub Actions `ci.yml`:** pnpm install, lint, typecheck, testy jednostkowe, walidacja seed, build, test ochrony przed wyciekiem, e2e. Uruchamiany na PR i push do main.
 - Praca na gałęziach feature, Conventional Commits, PR do main. Przed ogłoszeniem ukończenia uruchamiane są lint, typecheck, testy i build.
 
 ## 8. Przygotowanie pod przyszłą publikację (bez implementacji w MVP)
@@ -233,7 +264,9 @@ Osoby niepołączone z resztą drzewa wyświetlają się jako osobne grupy obok,
 5. Drzewo spełnia właściwości z 6.4 na danych seed.
 6. Wyszukiwarka, lista „Do sprawdzenia”, „Wyśrodkuj na mnie” i przełącznik motywu działają.
 7. Próba utworzenia cyklu lub trzeciego rodzica biologicznego jest blokowana z komunikatem.
-8. CI przechodzi na PR. README (po polsku) opisuje uruchomienie, strukturę, edycję danych i założenie prywatnego repozytorium danych, ze zrzutem ekranu na danych demo.
+8. Uszkodzony `family.json` daje ekran błędu z opisem i ścieżką, bez zapisu i bez przełączenia na demo.
+9. Zapis z drugiej karty na starszej rewizji jest odrzucany z komunikatem „Dane zmieniły się w innej karcie, odśwież”. W `.backups/` jest najwyżej 20 kopii.
+10. CI przechodzi na PR, łącznie z testem ochrony przed wyciekiem. README (po polsku) opisuje uruchomienie, strukturę, edycję danych i założenie prywatnego repozytorium danych, ze zrzutem ekranu na danych demo.
 
 ## 10. Struktura projektu
 
@@ -244,14 +277,23 @@ Jak w briefie: `.github/workflows/`, `.vscode/`, `data/`, `docs/{specs,plans,dec
 - **Zdjęcia w `data/family/photos/` zamiast `public/photos/`**, żeby nie trafiły do buildu i nie zostały przypadkiem opublikowane.
 - **`data/family/` to osobne, prywatne repozytorium**, ignorowane w repozytorium kodu. `data/family.json` z briefu zamienia się w `data/family/family.json`.
 - **Brak `deploy.yml` w MVP.**
-- Decyzja wykonawcy (do potwierdzenia przy planie): lista „Do sprawdzenia” jako osobny feature `src/features/research/`, a ekran powitalny w `src/app/` (np. `src/app/splash/`).
+- Lista „Do sprawdzenia” jako osobny feature `src/features/research/`, a ekran powitalny w `src/app/splash/` (zaakceptowane).
 
 ### 10.3 ADR do zapisania w `docs/decisions/`
 - 0001: dane rodziny poza repozytorium kodu (prywatne repo danych),
 - 0002: publikacja odłożona poza MVP,
 - 0003: automatyczny zapis zamiast przycisku „Zapisz”.
 
-## 11. Pozostawione wykonawcy
+## 11. Kolejność realizacji
+1. Szkielet projektu i CI: `.gitattributes`, a potem **osobny commit** z `git add --renormalize .`; konfiguracje, struktura, CLAUDE.md, ci.yml.
+2. Model domenowy: schemat, daty, relacje, dane seed, `validate-data`.
+3. Wtyczka zapisu i repozytorium danych: odczyt i zapis, rewizje, kopie, ponowienia, uszkodzony plik, kolejka zapisów.
+4. Drzewo: prototyp układu (punkt kontrolny z 6.4), potem pełna wizualizacja.
+5. Edytor i karta osoby (w tym zdjęcia).
+6. Wyszukiwarka i „Do sprawdzenia”.
+7. Wygląd: glassmorphism, motywy, ekran powitalny.
+
+## 12. Pozostawione wykonawcy
 - Konfiguracja elkjs i sposób modelowania par i związków w grafie.
 - Dokładna paleta kolorów, typografia, ikony i animacje w ramach opisanego stylu.
 - Podział na komponenty, store'y i composables w ramach struktury.
