@@ -26,8 +26,9 @@
     "@lucide/vue": "^1.67.0",
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",
-    "cn": "^0.5.2",
+    "clsx": "^2.1.1",
     "pinia": "^4.1.0",
+    "tailwind-merge": "^3.7.0",
     "vue": "^3.5.44",
     "vue-router": "^5.4.0",
     "zod": "^4.6.7"
