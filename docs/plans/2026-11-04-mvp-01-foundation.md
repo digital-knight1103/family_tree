@@ -10,6 +10,39 @@
 
 **Spec:** `docs/specs/2026-11-04-mvp-design.md`
 
+## Stan prac (2026-11-04, koniec dnia)
+
+Gałąź fazy 1: **`feature/faza-1-szkielet`** (zmieniona nazwa z `chore/skeleton-ci` na prośbę autora; dla kolejnych faz konwencja `feature/faza-N-<nazwa>`). Nic nie jest wypchnięte na GitHuba.
+
+| Zadanie | Stan | Commity |
+|---|---|---|
+| 1. Higiena repo | ✅ zrobione, zrecenzowane | `bd35122` (renormalizacja bez zmian, brak osobnego commita; zaznaczyć w PR) |
+| 2. Szkielet | ✅ zrobione, zrecenzowane (1 runda poprawek) | `de07a02`, `d99bea2` |
+| 3. ESLint/Prettier | ✅ zrobione, zrecenzowane | `0c80644` |
+| 4. Playwright | ✅ zrobione, zrecenzowane (1 runda poprawek) | `72671f3`, `4567da4` |
+| 5. CI i dokumentacja | ⏸ przerwane w trakcie; częściowa praca **niezacommitowana** w katalogu roboczym | — |
+
+**Zadanie 4: zawieszenie Playwright.**
+- *Przyczyna:* Chromium startuje i zamyka się poprawnie (kod wyjścia 0), ale potem Playwright w nieskończoność próbuje usunąć tymczasowy profil przeglądarki z systemowego `%TEMP%`, bo Windows zwraca „Odmowa dostępu” (log `pw:browser`: „starting temporary directories cleanup”).
+- *Poprawka:*
+  - `playwright.config.ts` przekierowuje `TEMP`/`TMP` procesów testowych do ignorowanego `test-results/.tmp`;
+  - artefakty trafiają do `test-results/artifacts`, bo Playwright czyści `outputDir` na starcie i usunąłby `.tmp`;
+  - `tests/e2e/global-teardown.ts` czyści `.tmp` po przebiegu. Ścieżka pochodzi ze wspólnej stałej `E2E_TMP_DIR` (`tests/e2e/fixtures/paths.ts`), a strażnik odmawia usunięcia czegokolwiek innego;
+  - folder danych e2e zostaje w systemowym tmp (`family tree e2e`), przypięty przez `E2E_SYSTEM_TMP`, a jego początkowy reset jest w `tests/e2e/global-setup.ts` (raz, w procesie głównym).
+  
+  Przy okazji usunięto ostrzeżenie Vitesta o imporcie bez rozszerzenia.
+- *Weryfikacja:* kilka kolejnych `timeout 180 pnpm test:e2e` kończy się samo (exit 0, ok. 2 s), `test-results/.tmp` jest po nich pusty, a port 5179 wolny.
+- *Co zostało:* nic w zadaniu 4. Uwaga dla zadań 11 i 18: rodzaje `seed-copy`, `corrupt` i `zero-bytes` dopisuje się w `tests/e2e/fixtures/data-dir.ts`, a domyślny reset zmienia się w `global-setup.ts` (nie w configu).
+
+**Zadanie 5: stan przerwania.** W katalogu roboczym są niezacommitowane: `.github/` (workflow CI), `CLAUDE.md`, `.env.example`, `docs/decisions/` i zmieniony `README.md`. Nie zostały zweryfikowane ani zrecenzowane.
+
+**Do zrobienia przy wznowieniu:**
+1. Przejrzeć i dokończyć zadanie 5 (weryfikacja: `format:check`, `lint`, `typecheck`, `test`, `build`, `timeout 180 pnpm test:e2e`).
+2. Recenzja zadania 5.
+3. Końcowa recenzja całej gałęzi fazy 1.
+4. Push i PR `feature/faza-1-szkielet` → `main`. Wymaga zainstalowanego i zalogowanego `gh` (`winget install GitHub.cli`, `gh auth login`).
+5. Zatrzymanie z podsumowaniem fazy 1.
+
 ## Mapa planów MVP
 
 Ten plan obejmuje fazy 1–3 z sekcji 11 specyfikacji. Kolejne plany powstaną po zakończeniu poprzedniego, bo zależą od jego wyniku (szczególnie od punktu kontrolnego układu drzewa):
@@ -54,12 +87,12 @@ Ten plan obejmuje fazy 1–3 z sekcji 11 specyfikacji. Kolejne plany powstaną p
 **Files:**
 - Create: `.gitattributes`, `.editorconfig`, `.gitignore`
 
-- [ ] **Step 1: Utwórz gałąź**
+- [x] **Step 1: Utwórz gałąź**
 
 Run: `git checkout docs/mvp-spec && git checkout -b chore/skeleton-ci`
 Expected: `Switched to a new branch 'chore/skeleton-ci'`. Gałąź zawiera commity ze specyfikacją i planem, więc trafią do `main` razem z PR fazy 1.
 
-- [ ] **Step 2: Utwórz `.gitattributes`**
+- [x] **Step 2: Utwórz `.gitattributes`**
 
 ```
 * text=auto eol=lf
@@ -70,22 +103,22 @@ Expected: `Switched to a new branch 'chore/skeleton-ci'`. Gałąź zawiera commi
 *.ico binary
 ```
 
-- [ ] **Step 3: Utwórz `.editorconfig`**
+- [x] **Step 3: Utwórz `.editorconfig`**
 
 `root = true`, dla `[*]`: `charset = utf-8`, `end_of_line = lf`, `indent_style = space`, `indent_size = 2`, `insert_final_newline = true`, `trim_trailing_whitespace = true`. Dla `[*.md]`: `trim_trailing_whitespace = false`.
 
-- [ ] **Step 4: Utwórz `.gitignore`**
+- [x] **Step 4: Utwórz `.gitignore`**
 
 Musi zawierać: `node_modules/`, `dist/`, `coverage/`, `test-results/`, `playwright-report/`, `.env`, `.env.*` z wyjątkiem `!.env.example`, `data/family/`, `.superpowers/`, `*.log`, `.DS_Store`, `Thumbs.db`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .gitattributes .editorconfig .gitignore
 git commit -m "chore: add gitattributes, editorconfig and gitignore"
 ```
 
-- [ ] **Step 6: Renormalizacja w osobnym commicie**
+- [x] **Step 6: Renormalizacja w osobnym commicie**
 
 Run: `git add --renormalize . && git status --short`
 Expected: lista zmienionych plików (np. `docs/specs/...md`) albo pusto. Jeśli coś się zmieniło:
@@ -107,7 +140,7 @@ Jeśli nic się nie zmieniło, zanotuj to w opisie PR („renormalizacja bez zmi
 **Interfaces:**
 - Produces: alias `@/` → `src/`, alias `@seed/` → `data/seed/` (używany tylko przez `StaticFamilyRepository`, Task 15), alias `@tests/` → `tests/` (tylko w plikach `*.spec.ts`; `tsconfig.app.json` obejmuje `tests/fixtures/**`, a ESLint zabrania importu `@tests/` w plikach innych niż `*.spec.ts`), skrypty pnpm: `dev`, `build`, `preview`, `test` (vitest run), `test:watch`, `typecheck` (`vue-tsc --build --force`), `lint`, `format`, `test:e2e`, `validate:data`, `check:leaks` (dwa ostatnie dodają Task 11 i Task 19).
 
-- [ ] **Step 1: Zainstaluj zależności**
+- [x] **Step 1: Zainstaluj zależności**
 
 Run:
 ```bash
@@ -117,16 +150,16 @@ pnpm add -D vite @vitejs/plugin-vue typescript vue-tsc @types/node @vue/tsconfig
 ```
 Expected: `package.json` z zależnościami, `pnpm-lock.yaml`. W `package.json` ustaw `"private": true`, `"type": "module"`, `"engines": { "node": "^22.18.0 || >=24.12.0" }`, `"packageManager"` z aktualną wersją pnpm.
 
-- [ ] **Step 2: Napisz test, który nie przejdzie**
+- [x] **Step 2: Napisz test, który nie przejdzie**
 
 `src/app/App.spec.ts`: `it('renderuje powłokę aplikacji')`. Montuje `App` z routerem (`createRouter` z `createMemoryHistory`) i Pinia, a potem sprawdza, że `wrapper.find('[data-testid="app-shell"]').exists()` jest `true`.
 
-- [ ] **Step 3: Uruchom test**
+- [x] **Step 3: Uruchom test**
 
 Run: `pnpm test`
 Expected: FAIL (brak `App.vue` lub brak konfiguracji).
 
-- [ ] **Step 4: Utwórz konfigurację i powłokę**
+- [x] **Step 4: Utwórz konfigurację i powłokę**
 
 - `vite.config.ts`: pluginy `vue()`, `tailwindcss()`, aliasy `@` i `@seed` (przez `fileURLToPath(new URL(...))`), `base: './'`.
 - `vitest.config.ts`: `mergeConfig` z konfiguracją Vite, `environment: 'jsdom'`, `include: ['src/**/*.spec.ts', 'scripts/**/*.spec.ts', 'vite-plugins/**/*.spec.ts']`. Testy w `vite-plugins/` i `scripts/` dostają `// @vitest-environment node` w nagłówku pliku.
@@ -136,17 +169,17 @@ Expected: FAIL (brak `App.vue` lub brak konfiguracji).
 - `src/app/App.vue`: korzeń `<div data-testid="app-shell">` z `<RouterView />`.
 - `src/styles/globals.css`: `@import "tailwindcss";` (tokeny shadcn dopisze `init`).
 
-- [ ] **Step 5: Zainicjalizuj shadcn-vue**
+- [x] **Step 5: Zainicjalizuj shadcn-vue**
 
 Run: `pnpm dlx shadcn-vue@latest init` (Vite, kolor bazowy `neutral`, ikony `lucide`, zmienne CSS). Potem popraw `components.json`, żeby trzymać się struktury: `tailwind.css: "src/styles/globals.css"`, `aliases.components: "@/components"`, `aliases.ui: "@/components/ui"`, `aliases.utils: "@/shared/utils/cn"`, `aliases.lib: "@/shared/utils"`, `aliases.composables: "@/shared/composables"`. Jeśli `init` utworzył `src/lib/utils.ts`, przenieś jego zawartość do `src/shared/utils/cn.ts`, a `src/lib/` usuń.
 Expected: zainstalowane `lucide-vue-next`, `clsx`, `tailwind-merge`, `class-variance-authority`, `reka-ui` (lub to, co aktualnie instaluje `init`).
 
-- [ ] **Step 6: Uruchom testy i build**
+- [x] **Step 6: Uruchom testy i build**
 
 Run: `pnpm test && pnpm typecheck && pnpm build`
 Expected: test PASS, brak błędów typów, `dist/` utworzony.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A
@@ -159,11 +192,11 @@ git commit -m "chore: scaffold Vue 3 + Vite + TypeScript app with Tailwind and s
 - Create: `eslint.config.ts`, `.prettierrc.json`, `.prettierignore`, `.vscode/extensions.json`, `.vscode/settings.json`
 - Test: regułę granic importów sprawdza Step 4 (ręcznie, bez pliku testowego).
 
-- [ ] **Step 1: Zainstaluj**
+- [x] **Step 1: Zainstaluj**
 
 Run: `pnpm add -D eslint @eslint/js eslint-plugin-vue @vue/eslint-config-typescript @vue/eslint-config-prettier prettier jiti`
 
-- [ ] **Step 2: Skonfiguruj**
+- [x] **Step 2: Skonfiguruj**
 
 - `eslint.config.ts`: `defineConfigWithVueTs` z `pluginVue.configs['flat/recommended']`, `vueTsConfigs.recommendedTypeChecked` (sprawdź aktualne nazwy w Context7), `skipFormatting`. Ignoruj `dist`, `coverage`, `src/components/ui/**` (kod generowany przez shadcn). Reguła `no-restricted-imports` dla `src/**` z wzorcami:
   - `group: ['../*', '../../*']`, komunikat „Użyj aliasu @/”,
@@ -173,18 +206,18 @@ Run: `pnpm add -D eslint @eslint/js eslint-plugin-vue @vue/eslint-config-typescr
 - `.vscode/settings.json`: `editor.formatOnSave: true`, `editor.defaultFormatter: esbenp.prettier-vscode`, `editor.codeActionsOnSave: { "source.fixAll.eslint": "explicit" }`, `files.eol: "\n"`.
 - Skrypty: `"lint": "eslint . --max-warnings 0"`, `"format": "prettier --write ."`, `"format:check": "prettier --check ."`.
 
-- [ ] **Step 3: Uruchom**
+- [x] **Step 3: Uruchom**
 
 Run: `pnpm format && pnpm lint`
 Expected: 0 błędów, 0 ostrzeżeń.
 
-- [ ] **Step 4: Sprawdź regułę granic**
+- [x] **Step 4: Sprawdź regułę granic**
 
 Utwórz tymczasowo `src/app/tmp-check.ts` z `import x from '@/features/tree/components/X'`.
 Run: `pnpm lint`
 Expected: FAIL z komunikatem „Importuj feature przez jego index.ts”. Usuń plik i uruchom `pnpm lint` ponownie (PASS).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -203,24 +236,24 @@ git commit -m "chore: configure ESLint, Prettier, import boundaries and VS Code 
 
   `playwright.config.ts` przy wczytaniu wywołuje `resetDataDir('seed-copy')` i startuje serwer dev z `FAMILY_DATA_DIR=E2E_DATA_DIR`. Testy wymagające innego stanu wywołują `resetDataDir(kind)` przed `page.goto`. Wtyczka czyta plik przy każdym żądaniu, więc restart serwera nie jest potrzebny. Testy e2e działają sekwencyjnie (`workers: 1`), bo dzielą folder.
 
-- [ ] **Step 1: Zainstaluj**
+- [x] **Step 1: Zainstaluj**
 
 Run: `pnpm add -D @playwright/test && pnpm exec playwright install chromium`
 
-- [ ] **Step 2: Napisz test**
+- [x] **Step 2: Napisz test**
 
 `tests/e2e/smoke.spec.ts`: `test('strona startowa się ładuje')`. Robi `page.goto('/')`, a potem `expect(page.getByTestId('app-shell')).toBeVisible()` i `expect(page).toHaveTitle('Drzewo Rodzinne')`.
 
-- [ ] **Step 3: Skonfiguruj**
+- [x] **Step 3: Skonfiguruj**
 
 `playwright.config.ts`: tylko `chromium`, `testDir: 'tests/e2e'`, `workers: 1`, `webServer: { command: 'pnpm dev --port 5179 --strictPort', url: 'http://localhost:5179', env: { FAMILY_DATA_DIR: E2E_DATA_DIR }, reuseExistingServer: false }`, `use.baseURL: 'http://localhost:5179'`. Zawsze własny serwer, żeby e2e nigdy nie trafiły na serwer dev z prawdziwymi danymi. Skrypt `"test:e2e": "playwright test"`.
 
-- [ ] **Step 4: Uruchom**
+- [x] **Step 4: Uruchom**
 
 Run: `pnpm test:e2e`
 Expected: 1 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
