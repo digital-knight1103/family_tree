@@ -12,7 +12,7 @@
 
 ## Stan prac (2026-11-05)
 
-Faza 1 scalona do `main` (PR #1, squash). Faza 2 na gałęzi **`feature/faza-2-model-domenowy`**, PR #2 otwarty, CI zielone, czeka na scalenie przez autora.
+Faza 1 scalona do `main` (PR #1, squash). Faza 2 na gałęzi **`feature/faza-2-model-domenowy`**, PR #2 otwarty. Przegląd końcowy przez świeżego podagenta: 1 istotna uwaga (komunikaty Zod po angielsku) i 1 podniesiona z drobnych (rok 1–2-cyfrowy), obie naprawione z testami; drobne odłożone w ledgerze. Czeka na scalenie przez autora.
 
 | Zadanie | Stan |
 |---|---|
