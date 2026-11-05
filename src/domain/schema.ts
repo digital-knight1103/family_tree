@@ -9,14 +9,20 @@ const PHOTO_FILE = /^[A-Za-z0-9_-]+\.webp$/
 
 const personId = z.string().regex(PERSON_ID, { error: 'Niepoprawny identyfikator osoby' })
 
-export const genDateSchema = z
-  .strictObject({
-    year: z.int().min(1),
-    month: z.int().min(1).max(12).optional(),
-    day: z.int().min(1).max(31).optional(),
-    qualifier: z.enum(['about', 'before', 'after']).optional(),
-  })
-  .refine(isValidGenDate, { error: 'Niepoprawna data' })
+const dateQualifierSchema = z.enum(['about', 'before', 'after'])
+
+// The shape without the calendar check, so GenDate can be inferred before isValidGenDate refines it.
+const genDateShape = z.strictObject({
+  year: z.int().min(1),
+  month: z.int().min(1).max(12).optional(),
+  day: z.int().min(1).max(31).optional(),
+  qualifier: dateQualifierSchema.optional(),
+})
+
+export type DateQualifier = z.infer<typeof dateQualifierSchema>
+export type GenDate = z.infer<typeof genDateShape>
+
+export const genDateSchema = genDateShape.refine(isValidGenDate, { error: 'Niepoprawna data' })
 
 export const factSchema = z.strictObject({
   date: genDateSchema.optional(),

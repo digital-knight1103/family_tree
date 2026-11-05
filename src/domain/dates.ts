@@ -1,11 +1,6 @@
-export type DateQualifier = 'about' | 'before' | 'after'
+import type { DateQualifier, GenDate } from './schema'
 
-export interface GenDate {
-  year: number
-  month?: number
-  day?: number
-  qualifier?: DateQualifier
-}
+export type { DateQualifier, GenDate }
 
 export type ParseResult = { ok: true; value: GenDate } | { ok: false; error: string }
 
