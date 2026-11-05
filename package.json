@@ -24,7 +24,8 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "validate:data": "tsx scripts/validate-data.ts"
   },
   "dependencies": {
     "@lucide/vue": "^1.67.0",

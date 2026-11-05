@@ -10,7 +10,8 @@ Drzewo Rodzinne: prywatna, lokalna aplikacja (Vue 3 + TypeScript) do budowania i
 - `pnpm test`: testy jednostkowe (Vitest); `pnpm test:watch` w trybie obserwacji
 - `pnpm test:e2e`: testy Playwright (na tymczasowym folderze danych, nigdy na prawdziwych danych)
 - `pnpm lint`, `pnpm format:check` (`pnpm format` naprawia), `pnpm typecheck`, `pnpm build`
-- `pnpm validate:data`, `pnpm check:leaks`: dochodzą w kolejnych zadaniach (jeszcze nie istnieją)
+- `pnpm validate:data`: walidacja `family.json` w folderze danych (`--seed`: danych demo)
+- `pnpm check:leaks`: dochodzi w fazie 3 (jeszcze nie istnieje)
 
 ## Struktura
 

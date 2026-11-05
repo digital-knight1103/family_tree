@@ -1,5 +1,5 @@
-import { descendantIds } from '@/domain/relations'
-import type { FamilyData, ParentChild } from '@/domain/schema'
+import { descendantIds } from './relations'
+import type { FamilyData, ParentChild } from './schema'
 
 export interface RuleViolation {
   path: string

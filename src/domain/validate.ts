@@ -1,5 +1,5 @@
-import { checkRelationRules } from '@/domain/relation-rules'
-import { familyDataSchema, type FamilyData } from '@/domain/schema'
+import { checkRelationRules } from './relation-rules'
+import { familyDataSchema, type FamilyData } from './schema'
 
 export interface ValidationError {
   path: string

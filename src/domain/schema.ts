@@ -1,5 +1,5 @@
 import * as z from 'zod'
-import { isValidGenDate } from '@/domain/dates'
+import { isValidGenDate } from './dates'
 
 export const SCHEMA_VERSION = 1
 
