@@ -56,6 +56,7 @@ export async function backupFile(
   backupsDir: string,
   now: Date,
   keep = 20,
+  remove: (file: string) => Promise<void> = (file) => fs.rm(file, { force: true }),
 ): Promise<string | null> {
   await fs.mkdir(backupsDir, { recursive: true })
   const destination = path.join(backupsDir, backupFileName(now))
@@ -67,7 +68,8 @@ export async function backupFile(
   }
   const backups = (await fs.readdir(backupsDir)).filter((name) => BACKUP_PATTERN.test(name)).sort()
   for (const name of backups.slice(0, Math.max(0, backups.length - keep))) {
-    await fs.rm(path.join(backupsDir, name), { force: true })
+    // Rotation is best-effort: a locked old backup must not fail the save.
+    await remove(path.join(backupsDir, name)).catch(() => undefined)
   }
   return destination
 }

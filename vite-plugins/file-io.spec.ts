@@ -105,5 +105,18 @@ describe('file-io', () => {
       expect(last).toBe(path.join(backups, backupFileName(new Date(2026, 10, 4, 9, 0, 24))))
       expect(await fs.readdir(backups)).toContain('notatka.txt')
     })
+
+    it('zwraca ścieżkę nowej kopii, nawet gdy usunięcie starej się nie uda', async () => {
+      const source = path.join(dir, 'family.json')
+      const backups = path.join(dir, '.backups')
+      await fs.writeFile(source, '{}')
+      await backupFile(source, backups, new Date(2026, 10, 4, 9, 0, 0))
+      const failingRemove = () =>
+        Promise.reject(Object.assign(new Error('EPERM'), { code: 'EPERM' }))
+      const now = new Date(2026, 10, 4, 9, 0, 1)
+      const result = await backupFile(source, backups, now, 1, failingRemove)
+      expect(result).toBe(path.join(backups, backupFileName(now)))
+      expect(await fs.readdir(backups)).toHaveLength(2)
+    })
   })
 })
