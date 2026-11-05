@@ -17,7 +17,18 @@ const SEED_FILE = path.resolve(
   'demo-family.json',
 )
 
-export type DataDirKind = 'empty' | 'seed-copy' | 'corrupt'
+export type DataDirKind = 'empty' | 'seed-copy' | 'corrupt' | 'zero-bytes'
+
+// Valid JSON that fails domain validation: Jan is a parent of Jozef and Jozef becomes a parent of Jan.
+function seedWithParentChildCycle(): { parentChild: unknown[] } {
+  const seed = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8')) as { parentChild: unknown[] }
+  seed.parentChild.push({
+    parentId: 'p_jozef_kowalczyk',
+    childId: 'p_jan_kowalczyk',
+    type: 'biological',
+  })
+  return seed
+}
 
 export function resetDataDir(kind: DataDirKind): void {
   fs.rmSync(E2E_DATA_DIR, { recursive: true, force: true })
@@ -30,7 +41,10 @@ export function resetDataDir(kind: DataDirKind): void {
       fs.copyFileSync(SEED_FILE, familyFile)
       break
     case 'corrupt':
-      fs.writeFileSync(familyFile, '{"version":1,"persons":[')
+      fs.writeFileSync(familyFile, JSON.stringify(seedWithParentChildCycle(), null, 2))
+      break
+    case 'zero-bytes':
+      fs.writeFileSync(familyFile, '')
       break
   }
 }

@@ -1,17 +1,17 @@
 import * as z from 'zod'
 import { pl } from 'zod/locales'
-import { isValidGenDate } from './dates'
+import { isValidGenDate } from './dates.ts'
 
 // The app is Polish-only, so Zod's built-in messages (unknown key, wrong type…) are shown in Polish.
 z.config(pl())
 
 export const SCHEMA_VERSION = 1
 
-const PERSON_ID = /^p_[A-Za-z0-9_-]+$/
+export const PERSON_ID_PATTERN = /^p_[A-Za-z0-9_-]+$/
 const UNION_ID = /^u_[A-Za-z0-9_-]+$/
-const PHOTO_FILE = /^[A-Za-z0-9_-]+\.webp$/
+export const PHOTO_FILE_PATTERN = /^p_[A-Za-z0-9_-]+\.webp$/
 
-const personId = z.string().regex(PERSON_ID, { error: 'Niepoprawny identyfikator osoby' })
+const personId = z.string().regex(PERSON_ID_PATTERN, { error: 'Niepoprawny identyfikator osoby' })
 
 const dateQualifierSchema = z.enum(['about', 'before', 'after'])
 
@@ -48,7 +48,10 @@ export const personSchema = z.strictObject({
   death: factSchema.optional(),
   bio: z.string().optional(),
   researchNotes: z.string().optional(),
-  photo: z.string().regex(PHOTO_FILE, { error: 'Niepoprawna nazwa pliku zdjęcia' }).optional(),
+  photo: z
+    .string()
+    .regex(PHOTO_FILE_PATTERN, { error: 'Niepoprawna nazwa pliku zdjęcia' })
+    .optional(),
   living: z.boolean(),
 })
 

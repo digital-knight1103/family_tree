@@ -1,4 +1,4 @@
-import type { DateQualifier, GenDate } from './schema'
+import type { DateQualifier, GenDate } from './schema.ts'
 
 export type { DateQualifier, GenDate }
 
