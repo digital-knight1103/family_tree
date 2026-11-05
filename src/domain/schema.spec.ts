@@ -112,8 +112,11 @@ describe('familyDataSchema', () => {
     expect(firstIssuePath(withData({ persons: [person] }))).toEqual(['persons', 0, 'photo'])
   })
 
-  it.each(['CON.webp', 'x.webp'])('odrzuca nazwę zdjęcia %s bez prefiksu p_', (photo) => {
-    const person = { ...MINIMAL_PERSON, photo }
-    expect(firstIssuePath(withData({ persons: [person] }))).toEqual(['persons', 0, 'photo'])
-  })
+  it.each(['CON.webp', 'x.webp', 'p_1Xwebp'])(
+    'odrzuca nazwę zdjęcia %s bez prefiksu p_',
+    (photo) => {
+      const person = { ...MINIMAL_PERSON, photo }
+      expect(firstIssuePath(withData({ persons: [person] }))).toEqual(['persons', 0, 'photo'])
+    },
+  )
 })

@@ -9,7 +9,7 @@ export const SCHEMA_VERSION = 1
 
 export const PERSON_ID_PATTERN = /^p_[A-Za-z0-9_-]+$/
 const UNION_ID = /^u_[A-Za-z0-9_-]+$/
-export const PHOTO_FILE_PATTERN = /^p_[A-Za-z0-9_-]+.webp$/
+export const PHOTO_FILE_PATTERN = /^p_[A-Za-z0-9_-]+\.webp$/
 
 const personId = z.string().regex(PERSON_ID_PATTERN, { error: 'Niepoprawny identyfikator osoby' })
 
