@@ -26,7 +26,7 @@ Faza 1 scalona do `main` (PR #1, squash). Faza 2 na gałęzi **`feature/faza-2-m
 
 **Decyzje fazy 2:** moduły `src/domain/` importują się nawzajem przez `./` (`tsx` i config Vite nie rozwiązują `@/`); `tsconfig.node.json` obejmuje `src/domain/**` i alias `@tests/*`.
 
-**Uwaga z fazy 1 dla zadania 18:** rodzaje `seed-copy`, `corrupt` i `zero-bytes` dopisuje się w `tests/e2e/fixtures/data-dir.ts`, a domyślny reset zmienia się w `tests/e2e/global-setup.ts`. Seed już istnieje, więc `seed-copy` można dodać w zadaniu 13 lub 18.
+**Fixture e2e:** `tests/e2e/fixtures/data-dir.ts` ma rodzaje `empty`, `seed-copy` (domyślny w `tests/e2e/global-setup.ts`) i `corrupt`. Zadanie 18 dopisuje `zero-bytes`.
 
 **Dalej:** po „dalej” od autora faza 3 (zadania 12–20) na gałęzi `feature/faza-3-zapis-danych` z `main`.
 
