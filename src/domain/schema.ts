@@ -1,0 +1,87 @@
+import * as z from 'zod'
+import { isValidGenDate } from '@/domain/dates'
+
+export const SCHEMA_VERSION = 1
+
+const PERSON_ID = /^p_[A-Za-z0-9_-]+$/
+const UNION_ID = /^u_[A-Za-z0-9_-]+$/
+const PHOTO_FILE = /^[A-Za-z0-9_-]+\.webp$/
+
+const personId = z.string().regex(PERSON_ID, { error: 'Niepoprawny identyfikator osoby' })
+
+export const genDateSchema = z
+  .strictObject({
+    year: z.int().min(1),
+    month: z.int().min(1).max(12).optional(),
+    day: z.int().min(1).max(31).optional(),
+    qualifier: z.enum(['about', 'before', 'after']).optional(),
+  })
+  .refine(isValidGenDate, { error: 'Niepoprawna data' })
+
+export const factSchema = z.strictObject({
+  date: genDateSchema.optional(),
+  place: z.string().optional(),
+  unconfirmed: z.boolean().optional(),
+})
+
+export const endFactSchema = z.strictObject({
+  date: genDateSchema.optional(),
+})
+
+export const personSchema = z.strictObject({
+  id: personId,
+  givenNames: z.string(),
+  surname: z.string(),
+  maidenName: z.string().optional(),
+  sex: z.enum(['male', 'female', 'unknown']),
+  birth: factSchema.optional(),
+  death: factSchema.optional(),
+  bio: z.string().optional(),
+  researchNotes: z.string().optional(),
+  photo: z.string().regex(PHOTO_FILE, { error: 'Niepoprawna nazwa pliku zdjęcia' }).optional(),
+  living: z.boolean(),
+})
+
+export const parentChildSchema = z.strictObject({
+  parentId: personId,
+  childId: personId,
+  type: z.enum(['biological', 'adoptive']),
+})
+
+export const unionSchema = z.strictObject({
+  id: z.string().regex(UNION_ID, { error: 'Niepoprawny identyfikator związku' }),
+  partnerIds: z.tuple([personId, personId]),
+  type: z.enum(['marriage', 'partnership']),
+  start: factSchema.optional(),
+  end: endFactSchema.optional(),
+})
+
+export const familyDataSchema = z.strictObject({
+  version: z.literal(SCHEMA_VERSION),
+  revision: z.int().nonnegative(),
+  settings: z.strictObject({
+    selfPersonId: personId.optional(),
+  }),
+  persons: z.array(personSchema),
+  parentChild: z.array(parentChildSchema),
+  unions: z.array(unionSchema),
+})
+
+export type Fact = z.infer<typeof factSchema>
+export type EndFact = z.infer<typeof endFactSchema>
+export type Person = z.infer<typeof personSchema>
+export type Sex = Person['sex']
+export type ParentChild = z.infer<typeof parentChildSchema>
+export type Union = z.infer<typeof unionSchema>
+export type FamilyData = z.infer<typeof familyDataSchema>
+
+export function emptyFamilyData(): FamilyData {
+  return {
+    version: SCHEMA_VERSION,
+    revision: 0,
+    settings: {},
+    persons: [],
+    parentChild: [],
+    unions: [],
+  }
+}
