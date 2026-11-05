@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createHash } from 'node:crypto'
 import fs from 'node:fs/promises'
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
@@ -15,6 +16,8 @@ interface Json {
   error?: string
   filePath?: string
   data?: { revision: number }
+  hash?: string
+  revision?: number
   errors: unknown[]
 }
 
@@ -54,6 +57,14 @@ afterEach(async () => {
 })
 
 const getFamily = () => fetch(`${base}/__data/family`).then(json)
+const fileHash = async () =>
+  createHash('sha256')
+    .update(await fs.readFile(path.join(tmp, 'family.json')))
+    .digest('hex')
+const createFamily = async () => {
+  const body = await json(await fetch(`${base}/__data/family/new`, { method: 'POST' }))
+  return body.hash
+}
 const putFamily = (body: unknown) =>
   fetch(`${base}/__data/family`, { method: 'PUT', body: JSON.stringify(body) })
 const putPhoto = (id: string, body: Buffer | string, type = 'image/png') =>
@@ -73,28 +84,43 @@ describe('GET/PUT/POST /__data/family', () => {
     await start()
     const created = await fetch(`${base}/__data/family/new`, { method: 'POST' })
     expect(created.status).toBe(201)
-    expect((await json(created)).data?.revision).toBe(0)
-    expect((await getFamily()).kind).toBe('ok')
+    const body = await json(created)
+    expect(body.data?.revision).toBe(0)
+    expect(body.hash).toBe(await fileHash())
+    const read = await getFamily()
+    expect(read.kind).toBe('ok')
+    expect(read.hash).toBe(await fileHash())
     const again = await fetch(`${base}/__data/family/new`, { method: 'POST' })
     expect(again.status).toBe(409)
     expect(await json(again)).toEqual({ error: 'exists' })
   })
 
-  it('zapisuje, a drugi zapis ze starą rewizją to konflikt', async () => {
+  it('zapisuje, a drugi zapis ze starą bazą to konflikt', async () => {
     await start()
-    await fetch(`${base}/__data/family/new`, { method: 'POST' })
-    const ok = await putFamily({ data: emptyFamilyData(), baseRevision: 0 })
+    const baseHash = await createFamily()
+    const ok = await putFamily({ data: emptyFamilyData(), baseRevision: 0, baseHash })
     expect(ok.status).toBe(200)
     expect(ok.headers.get('content-type')).toBe('application/json; charset=utf-8')
-    expect(await json(ok)).toEqual({ revision: 1 })
-    const conflict = await putFamily({ data: emptyFamilyData(), baseRevision: 0 })
+    expect(await json(ok)).toEqual({ revision: 1, hash: await fileHash() })
+    const conflict = await putFamily({ data: emptyFamilyData(), baseRevision: 0, baseHash })
     expect(conflict.status).toBe(409)
     expect(await json(conflict)).toEqual({ error: 'conflict' })
   })
 
+  it('ręczna zmiana pliku po odczycie z innej karty to konflikt dla starej karty', async () => {
+    await start()
+    await createFamily()
+    const { hash: tabA } = await getFamily()
+    const file = path.join(tmp, 'family.json')
+    await fs.writeFile(file, (await fs.readFile(file, 'utf8')).replace('{}', '{ }'))
+    await getFamily()
+    const res = await putFamily({ data: emptyFamilyData(), baseRevision: 0, baseHash: tabA })
+    expect(res.status).toBe(409)
+  })
+
   it('odrzuca zapis z cyklem kodem 422', async () => {
     await start()
-    await fetch(`${base}/__data/family/new`, { method: 'POST' })
+    const baseHash = await createFamily()
     const person = (id: string) => ({
       id,
       givenNames: 'A',
@@ -110,14 +136,15 @@ describe('GET/PUT/POST /__data/family', () => {
         { parentId: 'p_2', childId: 'p_1', type: 'biological' },
       ],
     }
-    const res = await putFamily({ data, baseRevision: 0 })
+    const res = await putFamily({ data, baseRevision: 0, baseHash })
     expect(res.status).toBe(422)
     expect((await json(res)).errors.length).toBeGreaterThan(0)
   })
 
   it('zapis do brakującego pliku to 404', async () => {
     await start()
-    expect((await putFamily({ data: emptyFamilyData(), baseRevision: 0 })).status).toBe(404)
+    const res = await putFamily({ data: emptyFamilyData(), baseRevision: 0, baseHash: 'x' })
+    expect(res.status).toBe(404)
   })
 
   it('uszkodzony plik: GET invalid, PUT 423', async () => {
@@ -126,7 +153,7 @@ describe('GET/PUT/POST /__data/family', () => {
     const body = await getFamily()
     expect(body.kind).toBe('invalid')
     expect(body.errors.length).toBeGreaterThan(0)
-    const res = await putFamily({ data: emptyFamilyData(), baseRevision: 0 })
+    const res = await putFamily({ data: emptyFamilyData(), baseRevision: 0, baseHash: 'x' })
     expect(res.status).toBe(423)
     expect((await json(res)).errors.length).toBeGreaterThan(0)
   })
@@ -137,9 +164,14 @@ describe('GET/PUT/POST /__data/family', () => {
     const bad = await fetch(`${base}/__data/family`, { method: 'PUT', body: '{ nie json' })
     expect(bad.status).toBe(400)
     expect(typeof (await json(bad)).error).toBe('string')
-    expect((await putFamily({ data: emptyFamilyData() })).status).toBe(400)
-    expect((await putFamily({ baseRevision: 0 })).status).toBe(400)
-    expect((await putFamily({ data: emptyFamilyData(), baseRevision: 'x' })).status).toBe(400)
+    const data = emptyFamilyData()
+    const baseHash = await fileHash()
+    expect((await putFamily({ data, baseHash })).status).toBe(400)
+    expect((await putFamily({ baseRevision: 0, baseHash })).status).toBe(400)
+    expect((await putFamily({ data, baseRevision: 'x', baseHash })).status).toBe(400)
+    expect((await putFamily({ data, baseRevision: 0 })).status).toBe(400)
+    expect((await putFamily({ data, baseRevision: 0, baseHash: 7 })).status).toBe(400)
+    expect(await fs.readFile(path.join(tmp, 'family.json'), 'utf8')).toContain('"revision": 0')
   })
 
   it('413 dla zbyt dużego ciała (> 10 MB)', async () => {

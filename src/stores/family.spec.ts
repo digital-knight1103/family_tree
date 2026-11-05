@@ -18,8 +18,8 @@ vi.mock('@/data', async (importOriginal) => {
 
 const CONFLICT_MESSAGE = 'Dane zmieniły się w innej karcie, odśwież'
 
-function userResult(data: FamilyData): LoadResult {
-  return { kind: 'ok', data, source: 'user', readOnly: false }
+function userResult(data: FamilyData, hash = 'h0'): LoadResult {
+  return { kind: 'ok', data, source: 'user', readOnly: false, hash }
 }
 
 function addPerson(id: string) {
@@ -35,7 +35,7 @@ describe('useFamilyStore', () => {
     repo.load.mockReset()
     repo.save.mockReset()
     repo.createNew.mockReset()
-    repo.save.mockResolvedValue({ kind: 'ok', revision: 1 } satisfies SaveResult)
+    repo.save.mockResolvedValue({ kind: 'ok', revision: 1, hash: 'h1' } satisfies SaveResult)
   })
 
   afterEach(() => {
@@ -118,7 +118,7 @@ describe('useFamilyStore', () => {
     await vi.advanceTimersByTimeAsync(1)
     expect(repo.save).toHaveBeenCalledTimes(1)
     expect(repo.save.mock.calls[0]?.[0]).toBe(store.data)
-    expect(repo.save.mock.calls[0]?.[1]).toBe(0)
+    expect(repo.save.mock.calls[0]?.[1]).toEqual({ revision: 0, hash: 'h0' })
   })
 
   it('saveStatus goes pending, saving, saved', async () => {
@@ -131,7 +131,7 @@ describe('useFamilyStore', () => {
     expect(store.saveStatus).toBe('pending')
     await vi.advanceTimersByTimeAsync(500)
     expect(store.saveStatus).toBe('saving')
-    resolveSave({ kind: 'ok', revision: 1 })
+    resolveSave({ kind: 'ok', revision: 1, hash: 'h1' })
     await vi.advanceTimersByTimeAsync(0)
     expect(store.saveStatus).toBe('saved')
     expect(store.hasUnsaved()).toBe(false)
@@ -219,7 +219,7 @@ describe('useFamilyStore', () => {
   })
 
   it('startOwnTree gives an empty user tree that can be saved', async () => {
-    repo.createNew.mockResolvedValue(userResult(emptyFamilyData()))
+    repo.createNew.mockResolvedValue(userResult(emptyFamilyData(), 'created'))
     const store = useFamilyStore()
     await store.startOwnTree()
     expect(store.status).toBe('ready')
@@ -229,6 +229,7 @@ describe('useFamilyStore', () => {
     store.update(addPerson('p_a'))
     await vi.advanceTimersByTimeAsync(500)
     expect(repo.save).toHaveBeenCalledTimes(1)
+    expect(repo.save.mock.calls[0]?.[1]).toEqual({ revision: 0, hash: 'created' })
   })
 
   it('startOwnTree can fall back to an invalid result', async () => {
@@ -247,7 +248,11 @@ describe('useFamilyStore', () => {
     await store.load()
     store.update(addPerson('p_a'))
     store.flushOnUnload()
-    expect(repo.save).toHaveBeenCalledWith(store.data, 0, { keepalive: true })
+    expect(repo.save).toHaveBeenCalledWith(
+      store.data,
+      { revision: 0, hash: 'h0' },
+      { keepalive: true },
+    )
   })
 
   it('ignores a second startOwnTree while the first is in flight', async () => {

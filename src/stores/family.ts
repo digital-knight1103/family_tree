@@ -39,8 +39,11 @@ export const useFamilyStore = defineStore('family', () => {
     source.value = result.source
     readOnly.value = result.readOnly
     queue.value =
-      result.source === 'user' && !result.readOnly
-        ? createSaveQueue(getRepository().save.bind(getRepository()), result.data.revision)
+      result.source === 'user'
+        ? createSaveQueue(getRepository().save.bind(getRepository()), {
+            revision: result.data.revision,
+            hash: result.hash,
+          })
         : null
     status.value = 'ready'
   }

@@ -5,18 +5,28 @@ export type LoadResult =
   | {
       kind: 'ok'
       data: FamilyData
-      source: 'user' | 'demo'
-      readOnly: boolean
+      source: 'user'
+      readOnly: false
       filePath?: string
+      hash: string
     }
+  | { kind: 'ok'; data: FamilyData; source: 'demo'; readOnly: true }
   | { kind: 'invalid'; filePath: string; errors: ValidationError[] }
 
+// The file state a save builds on: its revision and the sha256 of its raw bytes.
+export interface SaveBase {
+  revision: number
+  hash: string
+}
+
 export type SaveResult =
-  { kind: 'ok'; revision: number } | { kind: 'conflict' } | { kind: 'error'; message: string }
+  | { kind: 'ok'; revision: number; hash: string }
+  | { kind: 'conflict' }
+  | { kind: 'error'; message: string }
 
 export interface FamilyRepository {
   load(): Promise<LoadResult>
-  save(data: FamilyData, baseRevision: number, opts?: { keepalive?: boolean }): Promise<SaveResult>
+  save(data: FamilyData, base: SaveBase, opts?: { keepalive?: boolean }): Promise<SaveResult>
   createNew(): Promise<LoadResult>
   uploadPhoto(personId: string, file: Blob): Promise<string>
   deletePhoto(personId: string): Promise<void>

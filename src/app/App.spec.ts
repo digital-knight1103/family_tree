@@ -19,6 +19,7 @@ describe('App', () => {
       data: emptyFamilyData(),
       source: 'user',
       readOnly: false,
+      hash: 'h0',
     })
     const router = createRouter({
       history: createMemoryHistory(),

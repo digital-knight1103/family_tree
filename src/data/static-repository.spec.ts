@@ -13,6 +13,7 @@ describe('StaticFamilyRepository', () => {
     if (result.kind !== 'ok') return
     expect(result.source).toBe('demo')
     expect(result.readOnly).toBe(true)
+    expect(result).not.toHaveProperty('hash')
     expect(result.data.persons.length).toBeGreaterThanOrEqual(15)
   })
 
@@ -20,7 +21,9 @@ describe('StaticFamilyRepository', () => {
     const repository = create()
     const loaded = await repository.load()
     if (loaded.kind !== 'ok') throw new Error('seed should load')
-    await expect(repository.save(loaded.data, 0)).rejects.toThrow(READ_ONLY)
+    await expect(repository.save(loaded.data, { revision: 0, hash: 'h0' })).rejects.toThrow(
+      READ_ONLY,
+    )
   })
 
   it('rejects createNew', async () => {

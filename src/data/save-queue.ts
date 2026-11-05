@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue'
 import type { FamilyData } from '@/domain/schema'
-import type { FamilyRepository, SaveResult } from './repository'
+import type { FamilyRepository, SaveBase, SaveResult } from './repository'
 
 export type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error' | 'conflict'
 
@@ -17,14 +17,14 @@ const DEFAULT_DEBOUNCE_MS = 500
 
 export function createSaveQueue(
   save: FamilyRepository['save'],
-  initialRevision: number,
+  initialBase: SaveBase,
   opts: { debounceMs?: number } = {},
 ): SaveQueue {
   const debounceMs = opts.debounceMs ?? DEFAULT_DEBOUNCE_MS
   const status = ref<SaveStatus>('idle')
   const lastError = ref<string | null>(null)
 
-  let baseRevision = initialRevision
+  let base = initialBase
   let latest: FamilyData | undefined
   let newerThanSent = false
   let inFlight = false
@@ -47,7 +47,7 @@ export function createSaveQueue(
       status.value = 'error'
       return
     }
-    baseRevision = result.revision
+    base = { revision: result.revision, hash: result.hash }
     lastError.value = null
     if (newerThanSent) send(false)
     else status.value = 'saved'
@@ -60,9 +60,7 @@ export function createSaveQueue(
     newerThanSent = false
     inFlight = true
     status.value = 'saving'
-    const request = keepalive
-      ? save(data, baseRevision, { keepalive: true })
-      : save(data, baseRevision)
+    const request = keepalive ? save(data, base, { keepalive: true }) : save(data, base)
     void request.then(onResult)
   }
 

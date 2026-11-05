@@ -22,10 +22,16 @@ import { backupFile, writeFileAtomic, type FsLike } from './file-io.ts'
 export type ReadResult =
   | { kind: 'missing'; filePath: string }
   | { kind: 'invalid'; filePath: string; errors: ValidationError[] }
-  | { kind: 'ok'; filePath: string; data: FamilyData }
+  | { kind: 'ok'; filePath: string; data: FamilyData; hash: string }
+
+// What the client last saw: the revision and the sha256 of the raw file bytes.
+export interface WriteBase {
+  revision: number
+  hash: string
+}
 
 export type WriteResult =
-  | { kind: 'ok'; revision: number }
+  | { kind: 'ok'; revision: number; hash: string }
   | { kind: 'conflict' }
   | { kind: 'invalid'; errors: ValidationError[] }
   | { kind: 'blocked'; errors: ValidationError[] }
@@ -68,13 +74,10 @@ function serialize(data: FamilyData): string {
 
 const sha256 = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex')
 
-type LoadResult = ReadResult & { hash?: string }
-
 export function createDataStore(dataDir: string, deps: { now?: () => Date; fsImpl?: FsLike } = {}) {
   const now = deps.now ?? (() => new Date())
   const filePath = path.join(dataDir, 'family.json')
   const backupsDir = path.join(dataDir, '.backups')
-  let knownHash: string | undefined
   let queue: Promise<unknown> = Promise.resolve()
 
   // Runs mutations one at a time so read, check, backup and write never interleave.
@@ -84,7 +87,7 @@ export function createDataStore(dataDir: string, deps: { now?: () => Date; fsImp
     return run
   }
 
-  async function load(): Promise<LoadResult> {
+  async function read(): Promise<ReadResult> {
     let bytes: Buffer
     try {
       bytes = await fs.readFile(filePath)
@@ -93,25 +96,17 @@ export function createDataStore(dataDir: string, deps: { now?: () => Date; fsImp
       throw error
     }
     const parsed = parseFamilyJson(bytes.toString('utf8'))
-    const hash = sha256(bytes)
-    if (!parsed.ok) return { kind: 'invalid', filePath, errors: parsed.errors, hash }
-    return { kind: 'ok', filePath, data: parsed.data, hash }
+    if (!parsed.ok) return { kind: 'invalid', filePath, errors: parsed.errors }
+    return { kind: 'ok', filePath, data: parsed.data, hash: sha256(bytes) }
   }
 
-  async function read(): Promise<ReadResult> {
-    const { hash, ...result } = await load()
-    if (result.kind === 'ok') knownHash = hash
-    return result
-  }
-
-  async function writeUnlocked(next: FamilyData, baseRevision: number): Promise<WriteResult> {
-    const current = await load()
+  // The hash check catches manual edits that keep the revision; the client holds
+  // the base, so a read from another tab or a server restart cannot approve them.
+  async function writeUnlocked(next: FamilyData, base: WriteBase): Promise<WriteResult> {
+    const current = await read()
     if (current.kind === 'missing') return { kind: 'missing' }
     if (current.kind === 'invalid') return { kind: 'blocked', errors: current.errors }
-    if (
-      (knownHash !== undefined && current.hash !== knownHash) ||
-      baseRevision !== current.data.revision
-    ) {
+    if (base.revision !== current.data.revision || base.hash !== current.hash) {
       return { kind: 'conflict' }
     }
     const revision = current.data.revision + 1
@@ -120,12 +115,11 @@ export function createDataStore(dataDir: string, deps: { now?: () => Date; fsImp
     await backupFile(filePath, backupsDir, now())
     const content = serialize(validated.data)
     await writeFileAtomic(filePath, content, deps.fsImpl)
-    knownHash = sha256(content)
-    return { kind: 'ok', revision }
+    return { kind: 'ok', revision, hash: sha256(content) }
   }
 
   async function createNewUnlocked(): Promise<
-    { kind: 'ok'; data: FamilyData } | { kind: 'exists' }
+    { kind: 'ok'; data: FamilyData; hash: string } | { kind: 'exists' }
   > {
     await fs.mkdir(dataDir, { recursive: true })
     const data = emptyFamilyData()
@@ -136,14 +130,12 @@ export function createDataStore(dataDir: string, deps: { now?: () => Date; fsImp
       if ((error as NodeJS.ErrnoException).code === 'EEXIST') return { kind: 'exists' }
       throw error
     }
-    knownHash = sha256(content)
-    return { kind: 'ok', data }
+    return { kind: 'ok', data, hash: sha256(content) }
   }
 
   return {
     read,
-    write: (next: FamilyData, baseRevision: number) =>
-      serialized(() => writeUnlocked(next, baseRevision)),
+    write: (next: FamilyData, base: WriteBase) => serialized(() => writeUnlocked(next, base)),
     createNew: () => serialized(createNewUnlocked),
   }
 }

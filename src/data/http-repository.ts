@@ -1,6 +1,12 @@
 import type { FamilyData } from '@/domain/schema'
 import type { ValidationError } from '@/domain/validate'
-import { loadSeed, type FamilyRepository, type LoadResult, type SaveResult } from './repository'
+import {
+  loadSeed,
+  type FamilyRepository,
+  type LoadResult,
+  type SaveBase,
+  type SaveResult,
+} from './repository'
 
 const BASE = '/__data'
 
@@ -16,7 +22,7 @@ const MESSAGES = {
 }
 
 type LoadResponse =
-  | { kind: 'ok'; data: FamilyData; filePath?: string }
+  | { kind: 'ok'; data: FamilyData; filePath?: string; hash: string }
   | { kind: 'missing'; filePath?: string }
   | { kind: 'invalid'; filePath: string; errors: ValidationError[] }
 
@@ -43,12 +49,14 @@ export class HttpFamilyRepository implements FamilyRepository {
     const body = await readJson<LoadResponse>(response)
     if (!body) throw new Error(MESSAGES.load)
     if (body.kind === 'ok') {
+      if (typeof body.hash !== 'string') throw new Error(MESSAGES.load)
       return {
         kind: 'ok',
         data: body.data,
         source: 'user',
         readOnly: false,
         filePath: body.filePath,
+        hash: body.hash,
       }
     }
     if (body.kind === 'invalid') {
@@ -60,7 +68,7 @@ export class HttpFamilyRepository implements FamilyRepository {
 
   async save(
     data: FamilyData,
-    baseRevision: number,
+    base: SaveBase,
     opts?: { keepalive?: boolean },
   ): Promise<SaveResult> {
     let response: Response
@@ -68,7 +76,7 @@ export class HttpFamilyRepository implements FamilyRepository {
       response = await fetch(`${BASE}/family`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, baseRevision }),
+        body: JSON.stringify({ data, baseRevision: base.revision, baseHash: base.hash }),
         ...(opts?.keepalive === true ? { keepalive: true } : {}),
       })
     } catch {
@@ -76,11 +84,11 @@ export class HttpFamilyRepository implements FamilyRepository {
     }
     switch (response.status) {
       case 200: {
-        const body = await readJson<{ revision: number }>(response)
-        if (typeof body?.revision !== 'number') {
+        const body = await readJson<{ revision: number; hash: string }>(response)
+        if (typeof body?.revision !== 'number' || typeof body.hash !== 'string') {
           return { kind: 'error', message: MESSAGES.saveGeneric }
         }
-        return { kind: 'ok', revision: body.revision }
+        return { kind: 'ok', revision: body.revision, hash: body.hash }
       }
       case 409:
         return { kind: 'conflict' }
@@ -102,14 +110,15 @@ export class HttpFamilyRepository implements FamilyRepository {
   async createNew(): Promise<LoadResult> {
     const response = await request(`${BASE}/family/new`, { method: 'POST' }, MESSAGES.create)
     if (response.status === 201) {
-      const body = await readJson<{ data: FamilyData; filePath?: string }>(response)
-      if (!body) throw new Error(MESSAGES.create)
+      const body = await readJson<{ data: FamilyData; filePath?: string; hash: string }>(response)
+      if (typeof body?.hash !== 'string') throw new Error(MESSAGES.create)
       return {
         kind: 'ok',
         data: body.data,
         source: 'user',
         readOnly: false,
         filePath: body.filePath,
+        hash: body.hash,
       }
     }
     if (response.status === 409) {

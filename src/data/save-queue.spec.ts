@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FamilyData } from '@/domain/schema'
-import type { FamilyRepository, SaveResult } from './repository'
+import type { FamilyRepository, SaveBase, SaveResult } from './repository'
 import { createSaveQueue } from './save-queue'
 
 type Deferred = { resolve: (result: SaveResult) => void }
 
-function setup(initialRevision = 1) {
+const baseAt = (revision: number): SaveBase => ({ revision, hash: `h${revision}` })
+const ok = (revision: number): SaveResult => ({ kind: 'ok', revision, hash: `h${revision}` })
+
+function setup(initialBase = baseAt(1)) {
   const pending: Deferred[] = []
   const save = vi.fn<FamilyRepository['save']>(
     () =>
@@ -13,7 +16,7 @@ function setup(initialRevision = 1) {
         pending.push({ resolve })
       }),
   )
-  const queue = createSaveQueue(save, initialRevision)
+  const queue = createSaveQueue(save, initialBase)
   return { save, queue, pending }
 }
 
@@ -40,7 +43,7 @@ describe('createSaveQueue', () => {
   })
 
   it('debounces three schedules within 200 ms into one call with the last state', async () => {
-    const { save, queue } = setup(7)
+    const { save, queue } = setup(baseAt(7))
     const [a, b, c] = [state(1), state(2), state(3)]
     queue.schedule(a)
     await vi.advanceTimersByTimeAsync(200)
@@ -51,12 +54,12 @@ describe('createSaveQueue', () => {
     expect(save).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)
     expect(save).toHaveBeenCalledTimes(1)
-    expect(save).toHaveBeenCalledWith(c, 7)
+    expect(save).toHaveBeenCalledWith(c, baseAt(7))
   })
 
   it('honours a custom debounce', async () => {
     const save = vi.fn(() => new Promise<SaveResult>(() => undefined))
-    const queue = createSaveQueue(save, 1, { debounceMs: 50 })
+    const queue = createSaveQueue(save, baseAt(1), { debounceMs: 50 })
     queue.schedule(state(1))
     await vi.advanceTimersByTimeAsync(50)
     expect(save).toHaveBeenCalledTimes(1)
@@ -68,55 +71,65 @@ describe('createSaveQueue', () => {
     queue.schedule(state(0))
     queue.schedule(a, { immediate: true })
     expect(save).toHaveBeenCalledTimes(1)
-    expect(save).toHaveBeenCalledWith(a, 1)
+    expect(save).toHaveBeenCalledWith(a, baseAt(1))
     expect(queue.status.value).toBe('saving')
-    await settle(pending[0], { kind: 'ok', revision: 2 })
+    await settle(pending[0], ok(2))
     await vi.advanceTimersByTimeAsync(1000)
     expect(save).toHaveBeenCalledTimes(1)
     expect(queue.status.value).toBe('saved')
   })
 
   it('never runs two saves in parallel and sends the newest state afterwards with the new revision', async () => {
-    const { save, queue, pending } = setup(1)
+    const { save, queue, pending } = setup(baseAt(1))
     const a = state(1)
     const b = state(2)
     queue.schedule(a, { immediate: true })
     queue.schedule(b)
     await vi.advanceTimersByTimeAsync(2000)
     expect(save).toHaveBeenCalledTimes(1)
-    await settle(pending[0], { kind: 'ok', revision: 5 })
+    await settle(pending[0], ok(5))
     expect(save).toHaveBeenCalledTimes(2)
-    expect(save).toHaveBeenLastCalledWith(b, 5)
+    expect(save).toHaveBeenLastCalledWith(b, baseAt(5))
     expect(queue.status.value).toBe('saving')
-    await settle(pending[1], { kind: 'ok', revision: 6 })
+    await settle(pending[1], ok(6))
     expect(queue.status.value).toBe('saved')
   })
 
+  it('passes the revision and hash returned by a save to the follow-up save', async () => {
+    const { save, queue, pending } = setup({ revision: 1, hash: 'start' })
+    queue.schedule(state(1), { immediate: true })
+    expect(save).toHaveBeenLastCalledWith(state(1), { revision: 1, hash: 'start' })
+    const next = state(2)
+    queue.schedule(next)
+    await settle(pending[0], { kind: 'ok', revision: 2, hash: 'after-first' })
+    expect(save).toHaveBeenLastCalledWith(next, { revision: 2, hash: 'after-first' })
+  })
+
   it('sends only the last of two changes made during a save, right after it, without debounce', async () => {
-    const { save, queue, pending } = setup(1)
+    const { save, queue, pending } = setup(baseAt(1))
     queue.schedule(state(1), { immediate: true })
     queue.schedule(state(2))
     queue.schedule(state(3))
     const last = state(4)
     queue.schedule(last)
-    await settle(pending[0], { kind: 'ok', revision: 2 })
+    await settle(pending[0], ok(2))
     expect(save).toHaveBeenCalledTimes(2)
-    expect(save).toHaveBeenLastCalledWith(last, 2)
-    await settle(pending[1], { kind: 'ok', revision: 3 })
+    expect(save).toHaveBeenLastCalledWith(last, baseAt(2))
+    await settle(pending[1], ok(3))
     await vi.advanceTimersByTimeAsync(2000)
     expect(save).toHaveBeenCalledTimes(2)
   })
 
   it('immediate during a save yields exactly one follow-up call', async () => {
-    const { save, queue, pending } = setup(1)
+    const { save, queue, pending } = setup(baseAt(1))
     queue.schedule(state(1), { immediate: true })
     const b = state(2)
     queue.schedule(b, { immediate: true })
     expect(save).toHaveBeenCalledTimes(1)
-    await settle(pending[0], { kind: 'ok', revision: 2 })
+    await settle(pending[0], ok(2))
     expect(save).toHaveBeenCalledTimes(2)
-    expect(save).toHaveBeenLastCalledWith(b, 2)
-    await settle(pending[1], { kind: 'ok', revision: 3 })
+    expect(save).toHaveBeenLastCalledWith(b, baseAt(2))
+    await settle(pending[1], ok(3))
     await vi.advanceTimersByTimeAsync(2000)
     expect(save).toHaveBeenCalledTimes(2)
   })
@@ -139,7 +152,7 @@ describe('createSaveQueue', () => {
   })
 
   it('goes to error on failure, keeps unsaved true and retry sends the newest state', async () => {
-    const { save, queue, pending } = setup(3)
+    const { save, queue, pending } = setup(baseAt(3))
     const a = state(1)
     queue.schedule(a, { immediate: true })
     await settle(pending[0], { kind: 'error', message: 'Dysk pełny' })
@@ -148,15 +161,15 @@ describe('createSaveQueue', () => {
     expect(queue.hasUnsaved()).toBe(true)
     queue.retry()
     expect(save).toHaveBeenCalledTimes(2)
-    expect(save).toHaveBeenLastCalledWith(a, 3)
+    expect(save).toHaveBeenLastCalledWith(a, baseAt(3))
     expect(queue.status.value).toBe('saving')
-    await settle(pending[1], { kind: 'ok', revision: 4 })
+    await settle(pending[1], ok(4))
     expect(queue.status.value).toBe('saved')
     expect(queue.lastError.value).toBeNull()
   })
 
   it('retry sends a state changed during the failing save', async () => {
-    const { save, queue, pending } = setup(3)
+    const { save, queue, pending } = setup(baseAt(3))
     queue.schedule(state(1), { immediate: true })
     const b = state(2)
     queue.schedule(b)
@@ -164,11 +177,11 @@ describe('createSaveQueue', () => {
     expect(save).toHaveBeenCalledTimes(1)
     expect(queue.status.value).toBe('error')
     queue.retry()
-    expect(save).toHaveBeenLastCalledWith(b, 3)
+    expect(save).toHaveBeenLastCalledWith(b, baseAt(3))
   })
 
   it('schedule after an error starts a normal new attempt', async () => {
-    const { save, queue, pending } = setup(3)
+    const { save, queue, pending } = setup(baseAt(3))
     queue.schedule(state(1), { immediate: true })
     await settle(pending[0], { kind: 'error', message: 'x' })
     const b = state(2)
@@ -176,7 +189,7 @@ describe('createSaveQueue', () => {
     expect(queue.status.value).toBe('pending')
     await vi.advanceTimersByTimeAsync(500)
     expect(save).toHaveBeenCalledTimes(2)
-    expect(save).toHaveBeenLastCalledWith(b, 3)
+    expect(save).toHaveBeenLastCalledWith(b, baseAt(3))
   })
 
   it('retry does nothing outside the error status', () => {
@@ -189,12 +202,12 @@ describe('createSaveQueue', () => {
   })
 
   it('flushOnUnload sends the pending state at once with keepalive', async () => {
-    const { save, queue } = setup(2)
+    const { save, queue } = setup(baseAt(2))
     const a = state(1)
     queue.schedule(a)
     queue.flushOnUnload()
     expect(save).toHaveBeenCalledTimes(1)
-    expect(save).toHaveBeenCalledWith(a, 2, { keepalive: true })
+    expect(save).toHaveBeenCalledWith(a, baseAt(2), { keepalive: true })
     await vi.advanceTimersByTimeAsync(2000)
     expect(save).toHaveBeenCalledTimes(1)
   })
@@ -203,7 +216,7 @@ describe('createSaveQueue', () => {
     const { save, queue, pending } = setup()
     queue.flushOnUnload()
     queue.schedule(state(1), { immediate: true })
-    await settle(pending[0], { kind: 'ok', revision: 2 })
+    await settle(pending[0], ok(2))
     queue.flushOnUnload()
     expect(save).toHaveBeenCalledTimes(1)
   })
@@ -217,13 +230,13 @@ describe('createSaveQueue', () => {
   })
 
   it('flushOnUnload in error sends the newest state with keepalive', async () => {
-    const { save, queue, pending } = setup(4)
+    const { save, queue, pending } = setup(baseAt(4))
     const a = state(1)
     queue.schedule(a, { immediate: true })
     await settle(pending[0], { kind: 'error', message: 'x' })
     queue.flushOnUnload()
     expect(save).toHaveBeenCalledTimes(2)
-    expect(save).toHaveBeenLastCalledWith(a, 4, { keepalive: true })
+    expect(save).toHaveBeenLastCalledWith(a, baseAt(4), { keepalive: true })
   })
 
   it('hasUnsaved is true in pending, saving and error, false in saved', async () => {
@@ -234,7 +247,7 @@ describe('createSaveQueue', () => {
     await vi.advanceTimersByTimeAsync(500)
     expect(queue.status.value).toBe('saving')
     expect(queue.hasUnsaved()).toBe(true)
-    await settle(pending[0], { kind: 'ok', revision: 2 })
+    await settle(pending[0], ok(2))
     expect(queue.status.value).toBe('saved')
     expect(queue.hasUnsaved()).toBe(false)
     queue.schedule(state(2), { immediate: true })

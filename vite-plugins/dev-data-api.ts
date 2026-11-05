@@ -87,26 +87,30 @@ export function devDataApi(options: { dataDir?: string } = {}): Plugin {
           if (req.method !== 'POST') throw new HttpError(405, 'Metoda niedozwolona')
           const created = await store.createNew()
           if (created.kind === 'exists') return sendJson(res, 409, { error: 'exists' })
-          return sendJson(res, 201, { data: created.data })
+          return sendJson(res, 201, { data: created.data, hash: created.hash })
         }
         if (rest.length !== 0) throw new HttpError(404, 'Nie znaleziono')
         if (req.method === 'GET') return sendJson(res, 200, await store.read())
         if (req.method !== 'PUT') throw new HttpError(405, 'Metoda niedozwolona')
 
         const body = await readJsonBody(req)
-        const { data, baseRevision } = (body ?? {}) as Record<string, unknown>
+        const { data, baseRevision, baseHash } = (body ?? {}) as Record<string, unknown>
         if (
           typeof data !== 'object' ||
           data === null ||
           Array.isArray(data) ||
-          !Number.isInteger(baseRevision)
+          !Number.isInteger(baseRevision) ||
+          typeof baseHash !== 'string'
         ) {
-          throw new HttpError(400, 'Brakuje pola data lub baseRevision')
+          throw new HttpError(400, 'Brakuje pola data, baseRevision lub baseHash')
         }
-        const result = await store.write(data as FamilyData, baseRevision as number)
+        const result = await store.write(data as FamilyData, {
+          revision: baseRevision as number,
+          hash: baseHash,
+        })
         switch (result.kind) {
           case 'ok':
-            return sendJson(res, 200, { revision: result.revision })
+            return sendJson(res, 200, { revision: result.revision, hash: result.hash })
           case 'conflict':
             return sendJson(res, 409, { error: 'conflict' })
           case 'invalid':
