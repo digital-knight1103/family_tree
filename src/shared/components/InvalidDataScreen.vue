@@ -3,7 +3,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import type { ValidationError } from '@/domain/validate'
 
-defineProps<{ filePath: string; errors: ValidationError[]; disabled?: boolean }>()
+defineProps<{ filePath: string; errors: ValidationError[] }>()
 defineEmits<{ retry: [] }>()
 </script>
 
@@ -24,6 +24,6 @@ defineEmits<{ retry: [] }>()
       Poprzednie wersje znajdziesz w folderze .backups obok pliku oraz w historii repozytorium
       danych.
     </p>
-    <Button :disabled="disabled" @click="$emit('retry')">Spróbuj ponownie</Button>
+    <Button @click="$emit('retry')">Spróbuj ponownie</Button>
   </section>
 </template>

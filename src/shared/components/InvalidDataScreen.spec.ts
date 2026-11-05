@@ -26,11 +26,4 @@ describe('InvalidDataScreen', () => {
     })
     expect(wrapper.text()).toContain('cały plik — Pusty plik')
   })
-
-  it('blokuje przycisk, gdy disabled', () => {
-    const wrapper = mount(InvalidDataScreen, {
-      props: { filePath: 'f.json', errors: [], disabled: true },
-    })
-    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
-  })
 })
