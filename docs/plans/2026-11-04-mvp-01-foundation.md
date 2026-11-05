@@ -12,23 +12,11 @@
 
 ## Stan prac (2026-11-05)
 
-Faza 1 scalona do `main` (PR #1, squash). Faza 2 na gałęzi **`feature/faza-2-model-domenowy`**, PR #2 otwarty. Przegląd końcowy przez świeżego podagenta: 1 istotna uwaga (komunikaty Zod po angielsku) i 1 podniesiona z drobnych (rok 1–2-cyfrowy), obie naprawione z testami; drobne odłożone w ledgerze. Czeka na scalenie przez autora.
+Fazy 1 i 2 scalone do `main` (PR #1, #2). Faza 3 na gałęzi **`feature/faza-3-zapis-danych`**: zadania 12–20 zrobione, każde z recenzją podagenta; przegląd końcowy świeżym podagentem i jedna fala poprawek (skrót pliku po stronie klienta, odporność kolejki na odrzucony zapis, fsync przed rename, walidacja kanarka w CI). Plan 01 jest zakończony; dalej plan 02 (drzewo).
 
-| Zadanie | Stan |
-|---|---|
-| 1–5. Szkielet i CI | ✅ scalone (PR #1) |
-| 6. Parsowanie dat | ✅ |
-| 7. Formatowanie i sortowanie dat | ✅ (poprawka odmiany miesięcy po „przed”/„po” z przeglądu końcowego) |
-| 8. Schemat Zod | ✅ |
-| 9. Zapytania o relacje | ✅ |
-| 10. Reguły relacji i walidacja | ✅ |
-| 11. Dane demo i `validate:data` | ✅ |
+**Kontrakty zmienione względem tekstu zadań 13–17** (decyzje w ledgerze wykonawcy, opis w PR fazy 3): `write(next, base: {revision, hash})`, PUT `{data, baseRevision, baseHash}` → `{revision, hash}`, `save(data, base: SaveBase, opts?)`, `createSaveQueue(save, initialBase)`. Testy zapisu działają wyłącznie na folderach tymczasowych.
 
-**Decyzje fazy 2:** moduły `src/domain/` importują się nawzajem przez `./` (`tsx` i config Vite nie rozwiązują `@/`); `tsconfig.node.json` obejmuje `src/domain/**` i alias `@tests/*`.
-
-**Fixture e2e:** `tests/e2e/fixtures/data-dir.ts` ma rodzaje `empty`, `seed-copy` (domyślny w `tests/e2e/global-setup.ts`) i `corrupt`. Zadanie 18 dopisuje `zero-bytes`.
-
-**Dalej:** po „dalej” od autora faza 3 (zadania 12–20) na gałęzi `feature/faza-3-zapis-danych` z `main`.
+**Odłożone na kolejne plany:** ścieżka folderu danych widoczna na ekranie demo (literówka w `FAMILY_DATA_DIR`), limit ~64 KB dla zapisu `keepalive`, 20 kopii ≈ 20 ostatnich autozapisów, identyfikatory osób małymi literami (kolizje nazw zdjęć na NTFS), mocniejszy `check:leaks` (porównanie z seed).
 
 ## Mapa planów MVP
 
