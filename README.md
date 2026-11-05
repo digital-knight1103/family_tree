@@ -44,9 +44,10 @@ Wzór `.gitignore` dla repozytorium danych:
 
 ```gitignore
 .backups/
+*.tmp
 ```
 
-Aplikacja zapisuje kopie poprzednich wersji `family.json` w `.backups/` (maksymalnie 20), więc nie ma potrzeby ich wersjonować.
+Aplikacja zapisuje kopie poprzednich wersji `family.json` w `.backups/` (maksymalnie 20), więc nie ma potrzeby ich wersjonować. Pliki `*.tmp` to pozostałości po przerwanym zapisie atomowym.
 
 ## Edycja danych
 
