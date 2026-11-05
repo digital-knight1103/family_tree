@@ -21,6 +21,34 @@ function failingRename(code: string, failures: number): FsLike & { calls: number
   return impl
 }
 
+// Real temp-file handles with hooks to fail the write or to log the order of calls.
+function recordingOpen(log: string[], failWrite?: string): FsLike {
+  return {
+    async rename(a: string, b: string) {
+      log.push('rename')
+      await fs.rename(a, b)
+    },
+    async open(file: string, flags: string) {
+      const handle = await fs.open(file, flags)
+      return {
+        async writeFile(data: string | Uint8Array) {
+          if (failWrite) throw Object.assign(new Error(failWrite), { code: failWrite })
+          log.push('write')
+          await handle.writeFile(data)
+        },
+        async sync() {
+          log.push('sync')
+          await handle.sync()
+        },
+        async close() {
+          log.push('close')
+          await handle.close()
+        },
+      }
+    },
+  }
+}
+
 describe('file-io', () => {
   let dir: string
 
@@ -57,6 +85,27 @@ describe('file-io', () => {
       })
       expect(fsImpl.calls).toBe(6)
       expect(await fs.readFile(target, 'utf8')).toBe('stare')
+      expect(await fs.readdir(dir)).toEqual(['family.json'])
+    })
+
+    it('zapisuje plik tymczasowy, robi fsync i zamyka go przed rename', async () => {
+      const target = path.join(dir, 'family.json')
+      const log: string[] = []
+      await writeFileAtomic(target, 'zażółć', recordingOpen(log), NO_DELAYS)
+      expect(log).toEqual(['write', 'sync', 'close', 'rename'])
+      expect(await fs.readFile(target, 'utf8')).toBe('zażółć')
+    })
+
+    it('nieudany zapis pliku tymczasowego (ENOSPC) usuwa go i rzuca oryginalny błąd', async () => {
+      const target = path.join(dir, 'family.json')
+      await fs.writeFile(target, 'stare')
+      const log: string[] = []
+      await expect(
+        writeFileAtomic(target, 'nowe', recordingOpen(log, 'ENOSPC'), NO_DELAYS),
+      ).rejects.toMatchObject({ code: 'ENOSPC' })
+      expect(log).toEqual(['close'])
+      expect(await fs.readFile(target, 'utf8')).toBe('stare')
+      expect((await fs.readdir(dir)).filter((name) => name.endsWith('.tmp'))).toEqual([])
       expect(await fs.readdir(dir)).toEqual(['family.json'])
     })
 

@@ -1,9 +1,12 @@
 import { randomBytes } from 'node:crypto'
-import fs from 'node:fs/promises'
+import fs, { type FileHandle } from 'node:fs/promises'
 import path from 'node:path'
+
+export type TempFileHandle = Pick<FileHandle, 'writeFile' | 'sync' | 'close'>
 
 export interface FsLike {
   rename(a: string, b: string): Promise<void>
+  open?(file: string, flags: string): Promise<TempFileHandle>
 }
 
 const RETRYABLE_CODES = new Set(['EPERM', 'EBUSY', 'EACCES'])
@@ -24,8 +27,18 @@ export async function writeFileAtomic(
   delaysMs: number[] = [50, 100, 200, 300, 350],
 ): Promise<void> {
   const temp = `${target}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
-  await fs.writeFile(temp, content, 'utf8')
+  const open = fsImpl.open?.bind(fsImpl) ?? ((file: string, flags: string) => fs.open(file, flags))
   try {
+    const handle = await open(temp, 'w')
+    try {
+      await handle.writeFile(content, 'utf8')
+      // Flush to disk before the rename so a crash cannot leave an empty family.json.
+      await handle.sync()
+    } catch (error) {
+      await handle.close().catch(() => undefined)
+      throw error
+    }
+    await handle.close()
     for (let attempt = 0; ; attempt++) {
       try {
         await fsImpl.rename(temp, target)
