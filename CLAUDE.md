@@ -46,6 +46,6 @@ Foldery `src/domain/`, `src/data/`, `src/features/`, `src/stores/` powstają w k
 
 - Pracujemy na gałęziach `feature/*`, nigdy bezpośrednio na `main`. Jedna gałąź i jeden PR do `main` na fazę: `feature/faza-N-<nazwa>`.
 - Po każdym zadaniu, które przeszło recenzję i testy: commit (Conventional Commits) i push gałęzi na `origin`.
-- Na koniec fazy: PR do `main` przez `gh`, podsumowanie i czekanie na „dalej” od autora.
+- Na koniec fazy: PR do `main` przez `gh`, podsumowanie i czekanie na „dalej” od autora. Autor scala PR przez „Squash and merge”, więc po scaleniu lokalną gałąź fazy usuwa się przez `git branch -D` (po sprawdzeniu, że `main` ma tę samą zawartość).
 - Nigdy nie pushuj niczego z `data/family/` ani plików `.env`.
 - Przed ogłoszeniem ukończenia uruchom: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e`.
