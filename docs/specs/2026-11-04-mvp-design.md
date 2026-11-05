@@ -151,7 +151,7 @@ Wszystkie pola faktów (`birth`, `death`, `start`, `end`) i ich podpola są opcj
   - `1890`, `03.1921`, `3.1921`, `12.03.1921`, `1921-03`, `1921-03-12`,
   - prefiksy: `ok.` / `około` / `ok` → about, `przed` / `przed.` → before, `po` → after (bez rozróżniania wielkości liter, tolerancja spacji),
   - błędny tekst daje komunikat pod polem, a nie zapis.
-- **Formatowanie po polsku:** `12 marca 1921`, `marzec 1921`, `1921`, `ok. 1890`, `przed 1939`, `po 1945`, `ok. marca 1921`. W węźle drzewa pokazywane są lata: `ok. 1890 – 1958`, `przed 1939 – ?`, `1965` (osoba żyjąca lub bez daty śmierci).
+- **Formatowanie po polsku:** `12 marca 1921`, `marzec 1921`, `1921`, `ok. 1890`, `przed 1939`, `po 1945`, `ok. marca 1921`. W węźle drzewa pokazywane są lata: `ok. 1890 – 1958`, `przed 1939 – ?`, `1965` (osoba żyjąca lub bez daty śmierci). Osoba bez daty urodzenia i bez daty śmierci nie ma w węźle zakresu lat (pusty tekst), także gdy jest zmarła.
 - Funkcja klucza sortowania (np. do kolejności rodzeństwa): data niepełna sortuje się według najwcześniejszego możliwego dnia, osoby bez daty trafiają na koniec.
 
 ### 5.2 Reguły relacji (`src/domain/relations.ts`)

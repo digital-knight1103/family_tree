@@ -16,7 +16,7 @@ pnpm install
 pnpm dev
 ```
 
-Bez własnych danych aplikacja pokazuje dane przykładowe w trybie tylko do odczytu. Inne komendy: `pnpm test`, `pnpm test:e2e`, `pnpm lint`, `pnpm typecheck`, `pnpm build`.
+Bez własnych danych aplikacja pokazuje dane przykładowe w trybie tylko do odczytu (dostępne od fazy 3). Inne komendy: `pnpm test`, `pnpm test:e2e`, `pnpm lint`, `pnpm typecheck`, `pnpm build`.
 
 ## Struktura folderów
 

@@ -1,0 +1,260 @@
+{
+  "version": 1,
+  "revision": 0,
+  "settings": {
+    "selfPersonId": "p_piotr_kowalczyk"
+  },
+  "persons": [
+    {
+      "id": "p_jan_kowalczyk",
+      "givenNames": "Jan",
+      "surname": "Kowalczyk",
+      "sex": "male",
+      "birth": { "date": { "year": 1890, "qualifier": "about" }, "place": "Zielona Dolina" },
+      "death": { "date": { "year": 1958, "month": 11, "day": 4 }, "place": "Zielona Dolina" },
+      "bio": "Kowal we wsi Zielona Dolina.",
+      "living": false
+    },
+    {
+      "id": "p_maria_kowalczyk",
+      "givenNames": "Maria",
+      "surname": "Kowalczyk",
+      "maidenName": "Jaworska",
+      "sex": "female",
+      "birth": { "date": { "year": 1894, "month": 5 }, "place": "Stary Młyn" },
+      "death": { "date": { "year": 1966 } },
+      "living": false
+    },
+    {
+      "id": "p_stefan_lis",
+      "givenNames": "Stefan",
+      "surname": "Lis",
+      "sex": "male",
+      "birth": {
+        "date": { "year": 1895, "qualifier": "before" },
+        "place": "okolice Górki",
+        "unconfirmed": true
+      },
+      "death": { "date": { "year": 1944, "qualifier": "after" } },
+      "researchNotes": "Miejsce urodzenia znane tylko z rodzinnych opowieści. Sprawdzić księgi parafialne.",
+      "living": false
+    },
+    {
+      "id": "p_nieznana_lis",
+      "givenNames": "",
+      "surname": "",
+      "sex": "female",
+      "researchNotes": "Żona Stefana, matka Zofii. Imienia i nazwiska nie udało się ustalić.",
+      "living": false
+    },
+    {
+      "id": "p_jozef_kowalczyk",
+      "givenNames": "Józef Marian",
+      "surname": "Kowalczyk",
+      "sex": "male",
+      "birth": { "date": { "year": 1921, "month": 3, "day": 12 }, "place": "Zielona Dolina" },
+      "death": { "date": { "year": 1990, "month": 1 }, "place": "Nowe Miasto" },
+      "living": false
+    },
+    {
+      "id": "p_helena_mazur",
+      "givenNames": "Helena",
+      "surname": "Mazur",
+      "maidenName": "Kowalczyk",
+      "sex": "female",
+      "birth": { "date": { "year": 1924, "qualifier": "about" }, "place": "Zielona Dolina" },
+      "death": { "date": { "year": 2001 } },
+      "living": false
+    },
+    {
+      "id": "p_antoni_kowalczyk",
+      "givenNames": "Antoni",
+      "surname": "Kowalczyk",
+      "sex": "male",
+      "birth": { "date": { "year": 1928 } },
+      "death": { "date": { "year": 1929 }, "unconfirmed": true },
+      "researchNotes": "Zmarł w dzieciństwie. Rok śmierci do potwierdzenia.",
+      "living": false
+    },
+    {
+      "id": "p_zofia_kowalczyk",
+      "givenNames": "Zofia",
+      "surname": "Kowalczyk",
+      "maidenName": "Lis",
+      "sex": "female",
+      "birth": { "date": { "year": 1925, "month": 8, "day": 30 }, "place": "Górka" },
+      "death": { "date": { "year": 2010, "month": 2, "day": 14 }, "place": "Nowe Miasto" },
+      "living": false
+    },
+    {
+      "id": "p_wladyslaw_mazur",
+      "givenNames": "Władysław",
+      "surname": "Mazur",
+      "sex": "male",
+      "birth": { "date": { "year": 1920, "qualifier": "about" } },
+      "death": { "date": { "year": 1980 } },
+      "living": false
+    },
+    {
+      "id": "p_andrzej_kowalczyk",
+      "givenNames": "Andrzej",
+      "surname": "Kowalczyk",
+      "sex": "male",
+      "birth": { "date": { "year": 1950, "month": 6, "day": 2 }, "place": "Nowe Miasto" },
+      "death": { "date": { "year": 2015, "month": 9 } },
+      "living": false
+    },
+    {
+      "id": "p_barbara_zielinska",
+      "givenNames": "Barbara",
+      "surname": "Zielińska",
+      "maidenName": "Kowalczyk",
+      "sex": "female",
+      "birth": { "date": { "year": 1953, "month": 4, "day": 21 }, "place": "Nowe Miasto" },
+      "living": true
+    },
+    {
+      "id": "p_krzysztof_kowalczyk",
+      "givenNames": "Krzysztof",
+      "surname": "Kowalczyk",
+      "sex": "male",
+      "birth": { "date": { "year": 1957, "month": 3 } },
+      "living": true
+    },
+    {
+      "id": "p_irena_mazur",
+      "givenNames": "Irena",
+      "surname": "Mazur",
+      "sex": "female",
+      "birth": { "date": { "year": 1948 } },
+      "living": true
+    },
+    {
+      "id": "p_ewa_kowalczyk",
+      "givenNames": "Ewa",
+      "surname": "Kowalczyk",
+      "maidenName": "Nowicka",
+      "sex": "female",
+      "birth": { "date": { "year": 1952, "month": 10, "day": 9 } },
+      "living": true
+    },
+    {
+      "id": "p_tomasz_zielinski",
+      "givenNames": "Tomasz",
+      "surname": "Zieliński",
+      "sex": "male",
+      "birth": { "date": { "year": 1950 } },
+      "living": true
+    },
+    {
+      "id": "p_piotr_kowalczyk",
+      "givenNames": "Piotr",
+      "surname": "Kowalczyk",
+      "sex": "male",
+      "birth": { "date": { "year": 1978, "month": 9, "day": 15 }, "place": "Nowe Miasto" },
+      "living": true
+    },
+    {
+      "id": "p_anna_kowalczyk",
+      "givenNames": "Anna",
+      "surname": "Kowalczyk",
+      "sex": "female",
+      "birth": { "date": { "year": 1981, "month": 1, "day": 27 } },
+      "living": true
+    },
+    {
+      "id": "p_marta_zielinska",
+      "givenNames": "Marta",
+      "surname": "Zielińska",
+      "sex": "female",
+      "birth": { "date": { "year": 1979 } },
+      "living": true
+    },
+    {
+      "id": "p_katarzyna_kowalczyk",
+      "givenNames": "Katarzyna",
+      "surname": "Kowalczyk",
+      "maidenName": "Dąbrowska",
+      "sex": "female",
+      "birth": { "date": { "year": 1980, "month": 7 } },
+      "living": true
+    },
+    {
+      "id": "p_ola_kowalczyk",
+      "givenNames": "Aleksandra",
+      "surname": "Kowalczyk",
+      "sex": "female",
+      "birth": { "date": { "year": 2008, "month": 12, "day": 1 } },
+      "living": true
+    }
+  ],
+  "parentChild": [
+    { "parentId": "p_jan_kowalczyk", "childId": "p_jozef_kowalczyk", "type": "biological" },
+    { "parentId": "p_maria_kowalczyk", "childId": "p_jozef_kowalczyk", "type": "biological" },
+    { "parentId": "p_jan_kowalczyk", "childId": "p_helena_mazur", "type": "biological" },
+    { "parentId": "p_maria_kowalczyk", "childId": "p_helena_mazur", "type": "biological" },
+    { "parentId": "p_jan_kowalczyk", "childId": "p_antoni_kowalczyk", "type": "biological" },
+    { "parentId": "p_maria_kowalczyk", "childId": "p_antoni_kowalczyk", "type": "biological" },
+    { "parentId": "p_stefan_lis", "childId": "p_zofia_kowalczyk", "type": "biological" },
+    { "parentId": "p_nieznana_lis", "childId": "p_zofia_kowalczyk", "type": "biological" },
+    { "parentId": "p_jozef_kowalczyk", "childId": "p_andrzej_kowalczyk", "type": "biological" },
+    { "parentId": "p_zofia_kowalczyk", "childId": "p_andrzej_kowalczyk", "type": "biological" },
+    { "parentId": "p_jozef_kowalczyk", "childId": "p_barbara_zielinska", "type": "biological" },
+    { "parentId": "p_zofia_kowalczyk", "childId": "p_barbara_zielinska", "type": "biological" },
+    { "parentId": "p_jozef_kowalczyk", "childId": "p_krzysztof_kowalczyk", "type": "biological" },
+    { "parentId": "p_zofia_kowalczyk", "childId": "p_krzysztof_kowalczyk", "type": "biological" },
+    { "parentId": "p_helena_mazur", "childId": "p_irena_mazur", "type": "biological" },
+    { "parentId": "p_wladyslaw_mazur", "childId": "p_irena_mazur", "type": "biological" },
+    { "parentId": "p_andrzej_kowalczyk", "childId": "p_piotr_kowalczyk", "type": "biological" },
+    { "parentId": "p_ewa_kowalczyk", "childId": "p_piotr_kowalczyk", "type": "biological" },
+    { "parentId": "p_andrzej_kowalczyk", "childId": "p_anna_kowalczyk", "type": "biological" },
+    { "parentId": "p_ewa_kowalczyk", "childId": "p_anna_kowalczyk", "type": "biological" },
+    { "parentId": "p_barbara_zielinska", "childId": "p_marta_zielinska", "type": "biological" },
+    { "parentId": "p_tomasz_zielinski", "childId": "p_marta_zielinska", "type": "adoptive" },
+    { "parentId": "p_piotr_kowalczyk", "childId": "p_ola_kowalczyk", "type": "biological" },
+    { "parentId": "p_katarzyna_kowalczyk", "childId": "p_ola_kowalczyk", "type": "biological" }
+  ],
+  "unions": [
+    {
+      "id": "u_jan_maria",
+      "partnerIds": ["p_jan_kowalczyk", "p_maria_kowalczyk"],
+      "type": "marriage",
+      "start": { "date": { "year": 1919 }, "place": "Zielona Dolina" }
+    },
+    {
+      "id": "u_stefan_nieznana",
+      "partnerIds": ["p_stefan_lis", "p_nieznana_lis"],
+      "type": "marriage"
+    },
+    {
+      "id": "u_jozef_zofia",
+      "partnerIds": ["p_jozef_kowalczyk", "p_zofia_kowalczyk"],
+      "type": "marriage",
+      "start": { "date": { "year": 1948, "month": 5, "day": 22 }, "place": "Górka" }
+    },
+    {
+      "id": "u_helena_wladyslaw",
+      "partnerIds": ["p_helena_mazur", "p_wladyslaw_mazur"],
+      "type": "marriage",
+      "start": { "date": { "year": 1946, "qualifier": "about" }, "unconfirmed": true }
+    },
+    {
+      "id": "u_andrzej_ewa",
+      "partnerIds": ["p_andrzej_kowalczyk", "p_ewa_kowalczyk"],
+      "type": "marriage",
+      "start": { "date": { "year": 1976, "month": 7, "day": 10 } }
+    },
+    {
+      "id": "u_barbara_tomasz",
+      "partnerIds": ["p_barbara_zielinska", "p_tomasz_zielinski"],
+      "type": "marriage",
+      "start": { "date": { "year": 1982 } }
+    },
+    {
+      "id": "u_piotr_katarzyna",
+      "partnerIds": ["p_piotr_kowalczyk", "p_katarzyna_kowalczyk"],
+      "type": "partnership",
+      "start": { "date": { "year": 2005 } }
+    }
+  ]
+}
