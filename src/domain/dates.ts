@@ -69,3 +69,78 @@ export function isValidGenDate(d: GenDate): boolean {
   date.setUTCFullYear(d.year)
   return date.getUTCMonth() === d.month - 1 && date.getUTCDate() === d.day
 }
+
+const MONTHS_GENITIVE = [
+  'stycznia',
+  'lutego',
+  'marca',
+  'kwietnia',
+  'maja',
+  'czerwca',
+  'lipca',
+  'sierpnia',
+  'września',
+  'października',
+  'listopada',
+  'grudnia',
+]
+
+const MONTHS_NOMINATIVE = [
+  'styczeń',
+  'luty',
+  'marzec',
+  'kwiecień',
+  'maj',
+  'czerwiec',
+  'lipiec',
+  'sierpień',
+  'wrzesień',
+  'październik',
+  'listopad',
+  'grudzień',
+]
+
+const QUALIFIER_LABEL: Record<DateQualifier, string> = {
+  about: 'ok.',
+  before: 'przed',
+  after: 'po',
+}
+
+function withQualifier(text: string, qualifier: DateQualifier | undefined): string {
+  return qualifier ? `${QUALIFIER_LABEL[qualifier]} ${text}` : text
+}
+
+export function formatGenDate(d: GenDate): string {
+  let text = String(d.year)
+  if (d.month !== undefined && d.day !== undefined) {
+    text = `${d.day} ${MONTHS_GENITIVE[d.month - 1]} ${d.year}`
+  } else if (d.month !== undefined) {
+    // A qualifier reads as "ok. marca 1921", so the month takes the genitive form.
+    const months = d.qualifier ? MONTHS_GENITIVE : MONTHS_NOMINATIVE
+    text = `${months[d.month - 1]} ${d.year}`
+  }
+  return withQualifier(text, d.qualifier)
+}
+
+export function formatGenDateInput(d: GenDate): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  let text = String(d.year)
+  if (d.month !== undefined) text = `${pad(d.month)}.${text}`
+  if (d.month !== undefined && d.day !== undefined) text = `${pad(d.day)}.${text}`
+  return withQualifier(text, d.qualifier)
+}
+
+function formatYear(d: GenDate): string {
+  return withQualifier(String(d.year), d.qualifier)
+}
+
+export function formatLifeSpan(birth?: GenDate, death?: GenDate, deceased = false): string {
+  if (death) return `${birth ? formatYear(birth) : '?'} – ${formatYear(death)}`
+  if (!birth) return ''
+  return deceased ? `${formatYear(birth)} – ?` : formatYear(birth)
+}
+
+export function genDateSortKey(d: GenDate | undefined): number {
+  if (!d) return Number.POSITIVE_INFINITY
+  return d.year * 10000 + (d.month ?? 1) * 100 + (d.day ?? 1)
+}
