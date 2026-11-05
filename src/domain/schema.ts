@@ -1,6 +1,6 @@
 import * as z from 'zod'
 import { pl } from 'zod/locales'
-import { isValidGenDate } from './dates'
+import { isValidGenDate } from './dates.ts'
 
 // The app is Polish-only, so Zod's built-in messages (unknown key, wrong type…) are shown in Polish.
 z.config(pl())

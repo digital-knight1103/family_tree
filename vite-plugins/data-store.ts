@@ -11,9 +11,13 @@ import {
   personSchema,
   unionSchema,
   type FamilyData,
-} from '../src/domain/schema'
-import { parseFamilyJson, validateFamilyData, type ValidationError } from '../src/domain/validate'
-import { backupFile, writeFileAtomic, type FsLike } from './file-io'
+} from '../src/domain/schema.ts'
+import {
+  parseFamilyJson,
+  validateFamilyData,
+  type ValidationError,
+} from '../src/domain/validate.ts'
+import { backupFile, writeFileAtomic, type FsLike } from './file-io.ts'
 
 export type ReadResult =
   | { kind: 'missing'; filePath: string }

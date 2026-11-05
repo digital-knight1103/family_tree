@@ -1,5 +1,5 @@
-import { genDateSortKey } from './dates'
-import type { FamilyData, Person, Union } from './schema'
+import { genDateSortKey } from './dates.ts'
+import type { FamilyData, Person, Union } from './schema.ts'
 
 function personsByIds(data: FamilyData, ids: Iterable<string>): Person[] {
   const wanted = new Set(ids)

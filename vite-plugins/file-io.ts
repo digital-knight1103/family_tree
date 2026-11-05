@@ -19,7 +19,7 @@ function delay(ms: number): Promise<void> {
 
 export async function writeFileAtomic(
   target: string,
-  content: string,
+  content: string | Uint8Array,
   fsImpl: FsLike = fs,
   delaysMs: number[] = [50, 100, 200, 300, 350],
 ): Promise<void> {
