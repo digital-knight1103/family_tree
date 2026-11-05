@@ -75,6 +75,15 @@ describe('familyDataSchema', () => {
     expect(firstIssuePath(withData({ persons: [person] }))).toEqual(['persons', 0])
   })
 
+  it('opisuje wbudowane błędy po polsku', () => {
+    const person = { ...MINIMAL_PERSON, sex: 'x', nazwisko: 'Nowak' }
+    const result = familyDataSchema.safeParse(withData({ persons: [person], revision: '5' }))
+    expect(result.success).toBe(false)
+    const messages = result.success ? [] : result.error.issues.map((i) => i.message)
+    expect(messages.some((m) => m.includes('nazwisko') && /Nierozpoznan/.test(m))).toBe(true)
+    for (const message of messages) expect(message).not.toMatch(/Invalid|Unrecognized|expected/)
+  })
+
   it('odrzuca inną wersję schematu', () => {
     expect(firstIssuePath(withData({ version: 2 }))).toEqual(['version'])
   })
