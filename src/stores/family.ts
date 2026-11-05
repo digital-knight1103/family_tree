@@ -45,13 +45,19 @@ export const useFamilyStore = defineStore('family', () => {
     status.value = 'ready'
   }
 
+  let inFlight = false
+
   async function run(request: () => Promise<LoadResult>) {
+    if (inFlight || hasUnsaved()) return
+    inFlight = true
     status.value = 'loading'
     try {
       apply(await request())
     } catch (error) {
       status.value = 'load-error'
       loadError.value = error instanceof Error ? error.message : String(error)
+    } finally {
+      inFlight = false
     }
   }
 

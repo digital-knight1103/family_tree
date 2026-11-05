@@ -249,4 +249,23 @@ describe('useFamilyStore', () => {
     store.flushOnUnload()
     expect(repo.save).toHaveBeenCalledWith(store.data, 0, { keepalive: true })
   })
+
+  it('ignores a second startOwnTree while the first is in flight', async () => {
+    repo.createNew.mockResolvedValue(userResult(emptyFamilyData()))
+    const store = useFamilyStore()
+    await Promise.all([store.startOwnTree(), store.startOwnTree()])
+    expect(repo.createNew).toHaveBeenCalledTimes(1)
+    expect(store.status).toBe('ready')
+  })
+
+  it('load does nothing while there are unsaved changes', async () => {
+    repo.load.mockResolvedValue(userResult(emptyFamilyData()))
+    const store = useFamilyStore()
+    await store.load()
+    store.update(addPerson('p_a'))
+    expect(store.hasUnsaved()).toBe(true)
+    await store.load()
+    expect(repo.load).toHaveBeenCalledTimes(1)
+    expect(store.status).toBe('ready')
+  })
 })
