@@ -103,6 +103,10 @@ describe('formatGenDate', () => {
     [{ year: 1945, qualifier: 'after' }, 'po 1945'],
     [{ year: 1921, month: 3, qualifier: 'about' }, 'ok. marca 1921'],
     [{ year: 1921, month: 3, day: 12, qualifier: 'before' }, 'przed 12 marca 1921'],
+    [{ year: 1921, month: 3, qualifier: 'before' }, 'przed marcem 1921'],
+    [{ year: 1921, month: 3, qualifier: 'after' }, 'po marcu 1921'],
+    [{ year: 1921, month: 11, qualifier: 'after' }, 'po listopadzie 1921'],
+    [{ year: 1921, month: 2, qualifier: 'before' }, 'przed lutym 1921'],
   ])('formatuje %j jako %j', (date, expected) => {
     expect(formatGenDate(date)).toBe(expected)
   })

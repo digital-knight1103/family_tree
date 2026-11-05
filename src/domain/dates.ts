@@ -100,6 +100,45 @@ const MONTHS_NOMINATIVE = [
   'grudzień',
 ]
 
+// "przed marcem 1921"
+const MONTHS_INSTRUMENTAL = [
+  'styczniem',
+  'lutym',
+  'marcem',
+  'kwietniem',
+  'majem',
+  'czerwcem',
+  'lipcem',
+  'sierpniem',
+  'wrześniem',
+  'październikiem',
+  'listopadem',
+  'grudniem',
+]
+
+// "po marcu 1921"
+const MONTHS_LOCATIVE = [
+  'styczniu',
+  'lutym',
+  'marcu',
+  'kwietniu',
+  'maju',
+  'czerwcu',
+  'lipcu',
+  'sierpniu',
+  'wrześniu',
+  'październiku',
+  'listopadzie',
+  'grudniu',
+]
+
+// Each qualifier governs a different case of a bare month name: "ok. marca", "przed marcem", "po marcu".
+const MONTHS_AFTER_QUALIFIER: Record<DateQualifier, string[]> = {
+  about: MONTHS_GENITIVE,
+  before: MONTHS_INSTRUMENTAL,
+  after: MONTHS_LOCATIVE,
+}
+
 const QUALIFIER_LABEL: Record<DateQualifier, string> = {
   about: 'ok.',
   before: 'przed',
@@ -115,8 +154,7 @@ export function formatGenDate(d: GenDate): string {
   if (d.month !== undefined && d.day !== undefined) {
     text = `${d.day} ${MONTHS_GENITIVE[d.month - 1]} ${d.year}`
   } else if (d.month !== undefined) {
-    // A qualifier reads as "ok. marca 1921", so the month takes the genitive form.
-    const months = d.qualifier ? MONTHS_GENITIVE : MONTHS_NOMINATIVE
+    const months = d.qualifier ? MONTHS_AFTER_QUALIFIER[d.qualifier] : MONTHS_NOMINATIVE
     text = `${months[d.month - 1]} ${d.year}`
   }
   return withQualifier(text, d.qualifier)
