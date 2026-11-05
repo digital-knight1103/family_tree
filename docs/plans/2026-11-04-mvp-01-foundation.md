@@ -10,9 +10,9 @@
 
 **Spec:** `docs/specs/2026-11-04-mvp-design.md`
 
-## Stan prac (2026-11-04, koniec dnia)
+## Stan prac (2026-11-05)
 
-Gałąź fazy 1: **`feature/faza-1-szkielet`** (zmieniona nazwa z `chore/skeleton-ci` na prośbę autora; dla kolejnych faz konwencja `feature/faza-N-<nazwa>`). Nic nie jest wypchnięte na GitHuba.
+Gałąź fazy 1: **`feature/faza-1-szkielet`** (zmieniona nazwa z `chore/skeleton-ci` na prośbę autora; dla kolejnych faz konwencja `feature/faza-N-<nazwa>`, zasady pracy z gitem w `CLAUDE.md`).
 
 | Zadanie | Stan | Commity |
 |---|---|---|
@@ -20,28 +20,11 @@ Gałąź fazy 1: **`feature/faza-1-szkielet`** (zmieniona nazwa z `chore/skeleto
 | 2. Szkielet | ✅ zrobione, zrecenzowane (1 runda poprawek) | `de07a02`, `d99bea2` |
 | 3. ESLint/Prettier | ✅ zrobione, zrecenzowane | `0c80644` |
 | 4. Playwright | ✅ zrobione, zrecenzowane (1 runda poprawek) | `72671f3`, `4567da4` |
-| 5. CI i dokumentacja | ⏸ przerwane w trakcie; częściowa praca **niezacommitowana** w katalogu roboczym | — |
+| 5. CI i dokumentacja | ✅ zrobione, zrecenzowane | `ci: add CI workflow; docs: …` |
 
-**Zadanie 4: zawieszenie Playwright.**
-- *Przyczyna:* Chromium startuje i zamyka się poprawnie (kod wyjścia 0), ale potem Playwright w nieskończoność próbuje usunąć tymczasowy profil przeglądarki z systemowego `%TEMP%`, bo Windows zwraca „Odmowa dostępu” (log `pw:browser`: „starting temporary directories cleanup”).
-- *Poprawka:*
-  - `playwright.config.ts` przekierowuje `TEMP`/`TMP` procesów testowych do ignorowanego `test-results/.tmp`;
-  - artefakty trafiają do `test-results/artifacts`, bo Playwright czyści `outputDir` na starcie i usunąłby `.tmp`;
-  - `tests/e2e/global-teardown.ts` czyści `.tmp` po przebiegu. Ścieżka pochodzi ze wspólnej stałej `E2E_TMP_DIR` (`tests/e2e/fixtures/paths.ts`), a strażnik odmawia usunięcia czegokolwiek innego;
-  - folder danych e2e zostaje w systemowym tmp (`family tree e2e`), przypięty przez `E2E_SYSTEM_TMP`, a jego początkowy reset jest w `tests/e2e/global-setup.ts` (raz, w procesie głównym).
-  
-  Przy okazji usunięto ostrzeżenie Vitesta o imporcie bez rozszerzenia.
-- *Weryfikacja:* kilka kolejnych `timeout 180 pnpm test:e2e` kończy się samo (exit 0, ok. 2 s), `test-results/.tmp` jest po nich pusty, a port 5179 wolny.
-- *Co zostało:* nic w zadaniu 4. Uwaga dla zadań 11 i 18: rodzaje `seed-copy`, `corrupt` i `zero-bytes` dopisuje się w `tests/e2e/fixtures/data-dir.ts`, a domyślny reset zmienia się w `global-setup.ts` (nie w configu).
+**Zadanie 4: zawieszenie Playwright na Windows.** Playwright w nieskończoność próbował usunąć tymczasowy profil Chromium z systemowego `%TEMP%` („Odmowa dostępu”). `playwright.config.ts` przekierowuje `TEMP`/`TMP` do ignorowanego `test-results/.tmp`, artefakty trafiają do `test-results/artifacts`, a `tests/e2e/global-teardown.ts` czyści `.tmp` (stała `E2E_TMP_DIR` w `tests/e2e/fixtures/paths.ts`). Folder danych e2e jest w systemowym tmp (`family tree e2e`), reset w `tests/e2e/global-setup.ts`. Uwaga dla zadań 11 i 18: rodzaje `seed-copy`, `corrupt` i `zero-bytes` dopisuje się w `tests/e2e/fixtures/data-dir.ts`, a domyślny reset zmienia się w `global-setup.ts`.
 
-**Zadanie 5: stan przerwania.** W katalogu roboczym są niezacommitowane: `.github/` (workflow CI), `CLAUDE.md`, `.env.example`, `docs/decisions/` i zmieniony `README.md`. Nie zostały zweryfikowane ani zrecenzowane.
-
-**Do zrobienia przy wznowieniu:**
-1. Przejrzeć i dokończyć zadanie 5 (weryfikacja: `format:check`, `lint`, `typecheck`, `test`, `build`, `timeout 180 pnpm test:e2e`).
-2. Recenzja zadania 5.
-3. Końcowa recenzja całej gałęzi fazy 1.
-4. Push i PR `feature/faza-1-szkielet` → `main`. Wymaga zainstalowanego i zalogowanego `gh` (`winget install GitHub.cli`, `gh auth login`).
-5. Zatrzymanie z podsumowaniem fazy 1.
+**Dalej:** PR fazy 1 do `main`, czekanie na „dalej”, potem faza 2 (zadania 6–11) na gałęzi `feature/faza-2-model-domenowy`.
 
 ## Mapa planów MVP
 

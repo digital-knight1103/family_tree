@@ -44,6 +44,8 @@ Foldery `src/domain/`, `src/data/`, `src/features/`, `src/stores/` powstają w k
 
 ## Workflow
 
-- Jedna gałąź i jeden PR do `main` na fazę: `feature/faza-N-<nazwa>`.
-- Conventional Commits.
+- Pracujemy na gałęziach `feature/*`, nigdy bezpośrednio na `main`. Jedna gałąź i jeden PR do `main` na fazę: `feature/faza-N-<nazwa>`.
+- Po każdym zadaniu, które przeszło recenzję i testy: commit (Conventional Commits) i push gałęzi na `origin`.
+- Na koniec fazy: PR do `main` przez `gh`, podsumowanie i czekanie na „dalej” od autora.
+- Nigdy nie pushuj niczego z `data/family/` ani plików `.env`.
 - Przed ogłoszeniem ukończenia uruchom: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e`.

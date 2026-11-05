@@ -10,7 +10,7 @@ Repozytorium kodu jest publiczne, a drzewo zawiera dane osobowe (daty żyjących
 - Folder zawiera `family.json` i `photos/`. Jest poza `public/`, więc nic nie trafi do buildu przypadkiem.
 - Autor zakłada osobne prywatne repozytorium (np. `family_tree-data`) i klonuje je do `data/family/`. Commity w nim robi ręcznie. `.backups/` jest ignorowane.
 - W repozytorium kodu jest tylko wymyślona rodzina `data/seed/demo-family.json` (testy, CI, build, zrzut ekranu).
-- Test w CI sprawdza, że nic z `data/family/` nie jest śledzone i że `dist/` zawiera wyłącznie dane seed.
+- Test w CI (skrypt `check:leaks`) sprawdza, że nic z `data/family/` nie jest śledzone i że `dist/` zawiera wyłącznie dane seed.
 
 ## Konsekwencje
 
