@@ -4,6 +4,8 @@ import { StaticFamilyRepository } from './static-repository'
 
 export type { FamilyRepository, LoadResult, SaveResult } from './repository'
 
+export { createSaveQueue, type SaveQueue, type SaveStatus } from './save-queue'
+
 let instance: FamilyRepository | undefined
 
 export function getRepository(): FamilyRepository {
