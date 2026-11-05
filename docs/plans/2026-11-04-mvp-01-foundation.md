@@ -16,6 +16,16 @@ Fazy 1 i 2 scalone do `main` (PR #1, #2). Faza 3 na gałęzi **`feature/faza-3-z
 
 **Kontrakty zmienione względem tekstu zadań 13–17** (decyzje w ledgerze wykonawcy, opis w PR fazy 3): `write(next, base: {revision, hash})`, PUT `{data, baseRevision, baseHash}` → `{revision, hash}`, `save(data, base: SaveBase, opts?)`, `createSaveQueue(save, initialBase)`. Testy zapisu działają wyłącznie na folderach tymczasowych.
 
+**Stan na koniec dnia (2026-11-05):** PR #3 (`feature/faza-3-zapis-danych` → `main`) jest otwarty, CI `verify` zielone (łącznie z kanarkiem w CI). Bramka SonarCloud jest czerwona przez jedno zgłoszenie `typescript:S4036` (MINOR, `scripts/check-no-leaks.ts:73`: `git` uruchamiany przez `PATH`). PR czeka, aż autor oznaczy je w SonarCloud jako Safe. Kod tego miejsca zostaje bez zmian (decyzja autora). Folder roboczy wykonawcy `.superpowers/sdd/2026-11-04-mvp-01-foundation/` (ledger, ignorowany przez git) zostaje do scalenia PR.
+
+**Do zrobienia przy wznowieniu:**
+1. Autor oznacza S4036 w SonarCloud jako Safe; sprawdzić `gh pr checks 3` (SonarCloud i `verify` zielone).
+2. Autor scala PR #3 przez „Squash and merge” i daje „dalej”.
+3. `git checkout main && git pull`, sprawdzić `git diff feature/faza-3-zapis-danych main` (pusto), potem `git branch -D feature/faza-3-zapis-danych`.
+4. Usunąć folder roboczy `.superpowers/sdd/2026-11-04-mvp-01-foundation/` (plan 01 zakończony; decyzje są w PR #3 i w tej sekcji).
+5. Autor zakłada prywatne repo danych `family_tree-data` i klonuje je do `data/family/` (instrukcja w README, sekcja „Twoje dane”; `.gitignore` repo danych: `.backups/` i `*.tmp`).
+6. Plan 02 (drzewo, spec §11 pkt 4) jeszcze nie istnieje: najpierw napisać go (brainstorming → plan), z punktem kontrolnym układu drzewa z autorem; gałąź `feature/faza-4-drzewo` z `main`.
+
 **Odłożone na kolejne plany:** ścieżka folderu danych widoczna na ekranie demo (literówka w `FAMILY_DATA_DIR`), limit ~64 KB dla zapisu `keepalive`, 20 kopii ≈ 20 ostatnich autozapisów, identyfikatory osób małymi literami (kolizje nazw zdjęć na NTFS), mocniejszy `check:leaks` (porównanie z seed).
 
 ## Mapa planów MVP
