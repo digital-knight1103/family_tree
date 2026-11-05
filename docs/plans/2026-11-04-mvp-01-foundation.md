@@ -12,19 +12,23 @@
 
 ## Stan prac (2026-11-05)
 
-Gałąź fazy 1: **`feature/faza-1-szkielet`** (zmieniona nazwa z `chore/skeleton-ci` na prośbę autora; dla kolejnych faz konwencja `feature/faza-N-<nazwa>`, zasady pracy z gitem w `CLAUDE.md`).
+Faza 1 scalona do `main` (PR #1, squash). Faza 2 na gałęzi **`feature/faza-2-model-domenowy`**, PR #2 otwarty, CI zielone, czeka na scalenie przez autora.
 
-| Zadanie | Stan | Commity |
-|---|---|---|
-| 1. Higiena repo | ✅ zrobione, zrecenzowane | `bd35122` (renormalizacja bez zmian, brak osobnego commita; zaznaczyć w PR) |
-| 2. Szkielet | ✅ zrobione, zrecenzowane (1 runda poprawek) | `de07a02`, `d99bea2` |
-| 3. ESLint/Prettier | ✅ zrobione, zrecenzowane | `0c80644` |
-| 4. Playwright | ✅ zrobione, zrecenzowane (1 runda poprawek) | `72671f3`, `4567da4` |
-| 5. CI i dokumentacja | ✅ zrobione, zrecenzowane | `ci: add CI workflow; docs: …` |
+| Zadanie | Stan |
+|---|---|
+| 1–5. Szkielet i CI | ✅ scalone (PR #1) |
+| 6. Parsowanie dat | ✅ |
+| 7. Formatowanie i sortowanie dat | ✅ (poprawka odmiany miesięcy po „przed”/„po” z przeglądu końcowego) |
+| 8. Schemat Zod | ✅ |
+| 9. Zapytania o relacje | ✅ |
+| 10. Reguły relacji i walidacja | ✅ |
+| 11. Dane demo i `validate:data` | ✅ |
 
-**Zadanie 4: zawieszenie Playwright na Windows.** Playwright w nieskończoność próbował usunąć tymczasowy profil Chromium z systemowego `%TEMP%` („Odmowa dostępu”). `playwright.config.ts` przekierowuje `TEMP`/`TMP` do ignorowanego `test-results/.tmp`, artefakty trafiają do `test-results/artifacts`, a `tests/e2e/global-teardown.ts` czyści `.tmp` (stała `E2E_TMP_DIR` w `tests/e2e/fixtures/paths.ts`). Folder danych e2e jest w systemowym tmp (`family tree e2e`), reset w `tests/e2e/global-setup.ts`. Uwaga dla zadań 11 i 18: rodzaje `seed-copy`, `corrupt` i `zero-bytes` dopisuje się w `tests/e2e/fixtures/data-dir.ts`, a domyślny reset zmienia się w `global-setup.ts`.
+**Decyzje fazy 2:** moduły `src/domain/` importują się nawzajem przez `./` (`tsx` i config Vite nie rozwiązują `@/`); `tsconfig.node.json` obejmuje `src/domain/**` i alias `@tests/*`.
 
-**Dalej:** PR fazy 1 do `main`, czekanie na „dalej”, potem faza 2 (zadania 6–11) na gałęzi `feature/faza-2-model-domenowy`.
+**Uwaga z fazy 1 dla zadania 18:** rodzaje `seed-copy`, `corrupt` i `zero-bytes` dopisuje się w `tests/e2e/fixtures/data-dir.ts`, a domyślny reset zmienia się w `tests/e2e/global-setup.ts`. Seed już istnieje, więc `seed-copy` można dodać w zadaniu 13 lub 18.
+
+**Dalej:** po „dalej” od autora faza 3 (zadania 12–20) na gałęzi `feature/faza-3-zapis-danych` z `main`.
 
 ## Mapa planów MVP
 
