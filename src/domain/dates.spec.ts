@@ -144,6 +144,10 @@ describe('formatLifeSpan', () => {
     expect(formatLifeSpan(undefined, undefined)).toBe('')
   })
 
+  it('zwraca pusty tekst bez dat także dla osoby zmarłej', () => {
+    expect(formatLifeSpan(undefined, undefined, true)).toBe('')
+  })
+
   it('pomija dzień i miesiąc', () => {
     expect(formatLifeSpan({ year: 1921, month: 3, day: 12 }, { year: 1990, month: 1 })).toBe(
       '1921 – 1990',
