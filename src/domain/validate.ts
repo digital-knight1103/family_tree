@@ -9,7 +9,7 @@ export interface ValidationError {
 export type ValidationResult =
   { ok: true; data: FamilyData } | { ok: false; errors: ValidationError[] }
 
-const BOM = '﻿'
+const BOM = String.fromCharCode(0xfeff)
 
 // Turns ['persons', 3, 'birth', 'date', 'month'] into 'persons[3].birth.date.month'.
 function formatPath(path: readonly PropertyKey[]): string {

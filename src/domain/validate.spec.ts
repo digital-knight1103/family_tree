@@ -51,7 +51,8 @@ describe('parseFamilyJson', () => {
   })
 
   it('akceptuje plik z BOM UTF-8', () => {
-    expect(parseFamilyJson('﻿' + JSON.stringify(emptyFamilyData())).ok).toBe(true)
+    const bom = String.fromCharCode(0xfeff)
+    expect(parseFamilyJson(bom + JSON.stringify(emptyFamilyData())).ok).toBe(true)
   })
 
   it('akceptuje końce linii CRLF', () => {
