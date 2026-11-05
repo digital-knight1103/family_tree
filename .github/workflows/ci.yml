@@ -21,6 +21,12 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm validate:data --seed
+      - name: Przygotuj kanarek danych
+        run: |
+          mkdir -p data/family/photos
+          node -e "require('fs').writeFileSync('data/family/family.json', JSON.stringify({version:1,revision:0,settings:{},persons:[{id:'p_canary',givenNames:'Kanarek',surname:'CANARY_LEAK_TEST_7f3a',sex:'unknown',living:false}],parentChild:[],unions:[]}))"
+          echo CANARY_LEAK_TEST_7f3a > data/family/photos/p_canary.webp
       - run: pnpm build
+      - run: pnpm check:leaks
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
