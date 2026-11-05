@@ -14,6 +14,10 @@ const ISO_MONTH = /^(\d{1,4})-(\d{1,2})$/
 const ERROR_EMPTY = 'Wpisz datę, np. 12.03.1921, 03.1921 albo 1921.'
 const ERROR_FORMAT = 'Nieznany format daty. Użyj np. 12.03.1921, 03.1921, 1921 lub „ok. 1890”.'
 const ERROR_INVALID = 'Taka data nie istnieje w kalendarzu.'
+const ERROR_SHORT_YEAR = 'Wpisz pełny rok, np. 1921 zamiast 21.'
+
+// A 1-2 digit year is almost always a shorthand ("12.03.21"), so it is rejected instead of read as year 21.
+const MIN_YEAR = 100
 
 function qualifierFor(prefix: string): DateQualifier {
   if (prefix.startsWith('przed')) return 'before'
@@ -48,6 +52,7 @@ export function parseGenDate(input: string): ParseResult {
 
   const date = matchDate(text)
   if (!date) return { ok: false, error: ERROR_FORMAT }
+  if (date.year < MIN_YEAR) return { ok: false, error: ERROR_SHORT_YEAR }
   if (!isValidGenDate(date)) return { ok: false, error: ERROR_INVALID }
 
   return { ok: true, value: qualifier ? { ...date, qualifier } : date }

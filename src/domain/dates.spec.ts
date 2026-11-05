@@ -48,6 +48,15 @@ describe('parseGenDate', () => {
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error.length).toBeGreaterThan(0)
   })
+
+  it.each(['12.03.21', '03.21', '21', 'po10', '21-3-1'])(
+    'odrzuca rok krótszy niż 3 cyfry w %j z prośbą o pełny rok',
+    (input) => {
+      const result = parseGenDate(input)
+      expect(result.ok).toBe(false)
+      if (!result.ok) expect(result.error).toContain('pełny rok')
+    },
+  )
 })
 
 describe('isValidGenDate', () => {
