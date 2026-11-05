@@ -14,6 +14,11 @@ export interface SaveQueue {
 }
 
 const DEFAULT_DEBOUNCE_MS = 500
+const SAVE_FAILED_MESSAGE = 'Nie udało się zapisać danych.'
+
+function rejectionMessage(error: unknown): string {
+  return error instanceof Error && error.message !== '' ? error.message : SAVE_FAILED_MESSAGE
+}
 
 export function createSaveQueue(
   save: FamilyRepository['save'],
@@ -61,7 +66,10 @@ export function createSaveQueue(
     inFlight = true
     status.value = 'saving'
     const request = keepalive ? save(data, base, { keepalive: true }) : save(data, base)
-    void request.then(onResult)
+    // A rejected save must not leave the queue stuck in 'saving'.
+    void request.then(onResult, (error: unknown) =>
+      onResult({ kind: 'error', message: rejectionMessage(error) }),
+    )
   }
 
   return {

@@ -192,6 +192,50 @@ describe('createSaveQueue', () => {
     expect(save).toHaveBeenLastCalledWith(b, baseAt(3))
   })
 
+  it('treats a rejected save as an error with a generic message and recovers on retry', async () => {
+    const save = vi
+      .fn<FamilyRepository['save']>()
+      .mockRejectedValueOnce('boom')
+      .mockResolvedValueOnce(ok(2))
+    const queue = createSaveQueue(save, baseAt(1))
+    const a = state(1)
+    queue.schedule(a, { immediate: true })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(queue.status.value).toBe('error')
+    expect(queue.lastError.value).toBe('Nie udało się zapisać danych.')
+    expect(queue.hasUnsaved()).toBe(true)
+    queue.retry()
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(save).toHaveBeenLastCalledWith(a, baseAt(1))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(queue.status.value).toBe('saved')
+  })
+
+  it('uses the message of a rejected Error and lets a later schedule save again', async () => {
+    const save = vi
+      .fn<FamilyRepository['save']>()
+      .mockRejectedValueOnce(new Error('Dysk odłączony'))
+      .mockResolvedValueOnce(ok(2))
+    const queue = createSaveQueue(save, baseAt(1))
+    queue.schedule(state(1), { immediate: true })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(queue.status.value).toBe('error')
+    expect(queue.lastError.value).toBe('Dysk odłączony')
+    const b = state(2)
+    queue.schedule(b)
+    await vi.advanceTimersByTimeAsync(500)
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(save).toHaveBeenLastCalledWith(b, baseAt(1))
+  })
+
+  it('falls back to the generic message for an Error without a message', async () => {
+    const save = vi.fn<FamilyRepository['save']>().mockRejectedValueOnce(new Error(''))
+    const queue = createSaveQueue(save, baseAt(1))
+    queue.schedule(state(1), { immediate: true })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(queue.lastError.value).toBe('Nie udało się zapisać danych.')
+  })
+
   it('retry does nothing outside the error status', () => {
     const { save, queue } = setup()
     queue.retry()
