@@ -10,21 +10,17 @@
 
 **Spec:** `docs/specs/2026-11-04-mvp-design.md`
 
-## Stan prac (2026-11-05)
+## Stan prac (2026-11-09)
 
-Fazy 1 i 2 scalone do `main` (PR #1, #2). Faza 3 na gałęzi **`feature/faza-3-zapis-danych`**: zadania 12–20 zrobione, każde z recenzją podagenta; przegląd końcowy świeżym podagentem i jedna fala poprawek (skrót pliku po stronie klienta, odporność kolejki na odrzucony zapis, fsync przed rename, walidacja kanarka w CI). Plan 01 jest zakończony; dalej plan 02 (drzewo).
+Plan 01 zakończony. Fazy 1–3 scalone do `main` przez PR #1–#3 (squash), oznaczone tagami `faza-1`, `faza-2`, `faza-3`. Każde zadanie miało recenzję podagenta, a każda faza przegląd końcowy świeżym podagentem.
 
-**Kontrakty zmienione względem tekstu zadań 13–17** (decyzje w ledgerze wykonawcy, opis w PR fazy 3): `write(next, base: {revision, hash})`, PUT `{data, baseRevision, baseHash}` → `{revision, hash}`, `save(data, base: SaveBase, opts?)`, `createSaveQueue(save, initialBase)`. Testy zapisu działają wyłącznie na folderach tymczasowych.
+**Kontrakty zmienione względem tekstu zadań 13–17** (opis w PR #3): `write(next, base: {revision, hash})`, PUT `{data, baseRevision, baseHash}` → `{revision, hash}`, `save(data, base: SaveBase, opts?)`, `createSaveQueue(save, initialBase)`. Testy zapisu działają wyłącznie na folderach tymczasowych.
 
-**Stan na koniec dnia (2026-11-05):** PR #3 (`feature/faza-3-zapis-danych` → `main`) jest otwarty, CI `verify` zielone (łącznie z kanarkiem w CI). Bramka SonarCloud jest czerwona przez jedno zgłoszenie `typescript:S4036` (MINOR, `scripts/check-no-leaks.ts:73`: `git` uruchamiany przez `PATH`). PR czeka, aż autor oznaczy je w SonarCloud jako Safe. Kod tego miejsca zostaje bez zmian (decyzja autora). Folder roboczy wykonawcy `.superpowers/sdd/2026-11-04-mvp-01-foundation/` (ledger, ignorowany przez git) zostaje do scalenia PR.
+**Sposób pracy od fazy 4** (zastępuje regułę gałęzi i PR z Global Constraints): praca wyłącznie na `main`, bez gałęzi feature i PR. Po każdym zadaniu, które przeszło recenzję podagenta i testy: commit na `main` (Conventional Commits) i `git push`. Hook `pre-push` (`pnpm verify:push`: build, `check:leaks`, lint, typecheck, testy jednostkowe) blokuje push, jeśli coś się nie zgadza. Koniec fazy: przegląd końcowy świeżym podagentem na `git diff faza-<N-1>..HEAD`, poprawki z testami, tag `faza-N` wypchnięty na `origin`, podsumowanie dla autora i czekanie na „dalej”.
 
-**Do zrobienia przy wznowieniu:**
-1. Autor oznacza S4036 w SonarCloud jako Safe; sprawdzić `gh pr checks 3` (SonarCloud i `verify` zielone).
-2. Autor scala PR #3 przez „Squash and merge” i daje „dalej”.
-3. `git checkout main && git pull`, sprawdzić `git diff feature/faza-3-zapis-danych main` (pusto), potem `git branch -D feature/faza-3-zapis-danych`.
-4. Usunąć folder roboczy `.superpowers/sdd/2026-11-04-mvp-01-foundation/` (plan 01 zakończony; decyzje są w PR #3 i w tej sekcji).
-5. Autor zakłada prywatne repo danych `family_tree-data` i klonuje je do `data/family/` (instrukcja w README, sekcja „Twoje dane”; `.gitignore` repo danych: `.backups/` i `*.tmp`).
-6. Plan 02 (drzewo, spec §11 pkt 4) jeszcze nie istnieje: najpierw napisać go (brainstorming → plan), z punktem kontrolnym układu drzewa z autorem; gałąź `feature/faza-4-drzewo` z `main`.
+**Dalej:**
+1. Autor zakłada prywatne repo danych `family_tree-data` i klonuje je do `data/family/` (instrukcja w README, sekcja „Twoje dane”; `.gitignore` repo danych: `.backups/` i `*.tmp`).
+2. Plan 02 (drzewo, spec §11 pkt 4): najpierw napisać go (brainstorming → plan), z punktem kontrolnym układu drzewa z autorem. Praca na `main`.
 
 **Odłożone na kolejne plany:** ścieżka folderu danych widoczna na ekranie demo (literówka w `FAMILY_DATA_DIR`), limit ~64 KB dla zapisu `keepalive`, 20 kopii ≈ 20 ostatnich autozapisów, identyfikatory osób małymi literami (kolizje nazw zdjęć na NTFS), mocniejszy `check:leaks` (porównanie z seed).
 
@@ -53,7 +49,7 @@ Ten plan obejmuje fazy 1–3 z sekcji 11 specyfikacji. Kolejne plany powstaną p
 - Belka demo dokładnie: **„To są dane przykładowe. Zmiany nie są zapisywane.”**, przycisk: **„Rozpocznij własne drzewo”**.
 - Kopie: `data/family/.backups/family-YYYY-MM-DD_HH-mm-ss-SSS.json`, maks. **20**. Rename: do **5** prób z rosnącym odstępem (50, 100, 200, 300, 350 ms), dla `EPERM`/`EBUSY`/`EACCES`.
 - Dane i pomocniki wyłącznie testowe leżą w `tests/fixtures/` (alias `@tests/`), nigdy w `src/`.
-- Conventional Commits. Jedna gałąź i jeden PR do `main` na fazę: `chore/skeleton-ci` (Task 1–5), `feat/domain-model` (Task 6–11), `feat/data-persistence` (Task 12–20). Gałąź fazy powstaje z `main`, jeśli PR poprzedniej fazy jest już scalony, a w przeciwnym razie z gałęzi poprzedniej fazy (wtedy bazą PR jest ta gałąź). **Po każdej fazie praca się zatrzymuje:** podsumowanie (co zrobione, wynik weryfikacji, co dalej) i czekanie na „dalej” od autora. Każdy commit kończy się linią `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- Conventional Commits. (Dotyczyło faz 1–3; od fazy 4 obowiązuje praca na `main` z sekcji „Stan prac”.) Jedna gałąź i jeden PR do `main` na fazę: `chore/skeleton-ci` (Task 1–5), `feat/domain-model` (Task 6–11), `feat/data-persistence` (Task 12–20). Gałąź fazy powstaje z `main`, jeśli PR poprzedniej fazy jest już scalony, a w przeciwnym razie z gałęzi poprzedniej fazy (wtedy bazą PR jest ta gałąź). **Po każdej fazie praca się zatrzymuje:** podsumowanie (co zrobione, wynik weryfikacji, co dalej) i czekanie na „dalej” od autora. Każdy commit kończy się linią `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Review Focus
 

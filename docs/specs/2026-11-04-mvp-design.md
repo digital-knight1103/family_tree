@@ -248,7 +248,7 @@ Osoby niepołączone z resztą drzewa wyświetlają się jako osobne grupy obok,
   - zawartość `dist/` po buildzie zawiera wyłącznie dane z `data/seed/` (sprawdzenie, że osadzone dane są identyczne z seed i że w `dist/` nie ma plików z folderu danych ani zdjęć spoza seed);
   - test działa jako skrypt w CI po buildzie i można go uruchomić lokalnie.
 - **GitHub Actions `ci.yml`:** pnpm install, lint, typecheck, testy jednostkowe, walidacja seed, build, test ochrony przed wyciekiem, e2e. Uruchamiany na PR i push do main.
-- Praca na gałęziach feature, Conventional Commits, PR do main. Przed ogłoszeniem ukończenia uruchamiane są lint, typecheck, testy i build.
+- Praca bezpośrednio na `main` (od fazy 4; fazy 1–3 przez PR), Conventional Commits, push po każdym zadaniu. Hook `pre-push` uruchamia build, test ochrony przed wyciekiem, lint, typecheck i testy jednostkowe; koniec fazy oznacza tag `faza-N`. Przed ogłoszeniem ukończenia uruchamiane są lint, typecheck, testy i build.
 
 ## 8. Przygotowanie pod przyszłą publikację (bez implementacji w MVP)
 - Pole `living` jest w modelu i formularzu.

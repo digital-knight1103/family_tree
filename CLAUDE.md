@@ -12,6 +12,7 @@ Drzewo Rodzinne: prywatna, lokalna aplikacja (Vue 3 + TypeScript) do budowania i
 - `pnpm lint`, `pnpm format:check` (`pnpm format` naprawia), `pnpm typecheck`, `pnpm build`
 - `pnpm validate:data`: walidacja `family.json` w folderze danych (`--seed`: danych demo)
 - `pnpm check:leaks`: po `pnpm build` sprawdza, że repo nie śledzi danych rodziny ani zdjęć, a `dist/` zawiera wyłącznie dane demo (w CI z kanarkiem w `data/family/`)
+- `pnpm verify:push`: to, co uruchamia hook `pre-push` (build, `check:leaks`, lint, typecheck, testy jednostkowe)
 
 ## Struktura
 
@@ -48,9 +49,10 @@ Folder `src/features/` powstaje w kolejnych planach.
 
 ## Workflow
 
-- Pracujemy na gałęziach `feature/*`, nigdy bezpośrednio na `main`. Jedna gałąź i jeden PR do `main` na fazę: `feature/faza-N-<nazwa>`.
-- Po każdym zadaniu, które przeszło recenzję i testy: commit (Conventional Commits) i push gałęzi na `origin`.
-- Na koniec fazy, przed PR: przegląd końcowy całej gałęzi przez świeżego podagenta (nie przez wykonawcę), a jego istotne uwagi naprawione z testami.
-- Na koniec fazy: PR do `main` przez `gh`, podsumowanie i czekanie na „dalej” od autora. Autor scala PR przez „Squash and merge”, więc po scaleniu lokalną gałąź fazy usuwa się przez `git branch -D` (po sprawdzeniu, że `main` ma tę samą zawartość).
+- Pracujemy wyłącznie na `main`: bez gałęzi feature i bez PR (od fazy 4; fazy 1–3 szły przez PR #1–#3).
+- Po każdym zadaniu, które przeszło recenzję podagenta i testy: commit bezpośrednio na `main` (Conventional Commits) i `git push`.
+- Hook `pre-push` (simple-git-hooks, instalowany przez `prepare` przy `pnpm install`) uruchamia `pnpm verify:push`: build, `check:leaks`, lint, typecheck, testy jednostkowe. Push nie przechodzi, jeśli coś się nie zgadza. Nie omijaj go (`--no-verify`, `SKIP_SIMPLE_GIT_HOOKS`) bez zgody autora.
+- Na koniec fazy: przegląd końcowy przez świeżego podagenta (nie przez wykonawcę) na różnicy od poprzedniego tagu (`git diff faza-<N-1>..HEAD`), istotne uwagi naprawione z testami, potem tag `faza-N` na `main`, `git push origin faza-N`, podsumowanie dla autora i czekanie na „dalej”.
+- Tagi faz: `faza-1`, `faza-2`, `faza-3`, … (lekkie lub opisane, zawsze wypchnięte na `origin`).
 - Nigdy nie pushuj niczego z `data/family/` ani plików `.env`.
 - Przed ogłoszeniem ukończenia uruchom: `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm validate:data --seed && pnpm build && pnpm check:leaks && pnpm test:e2e`.
