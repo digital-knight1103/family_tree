@@ -26,10 +26,12 @@ export function assignGenerations(data: FamilyData): Map<string, number> {
   for (const { partnerIds } of data.unions) {
     const [a, b] = partnerIds
     if (!known.has(a) || !known.has(b)) continue
-    unions.push([a, b])
+    unions.push(a < b ? [a, b] : [b, a])
     adjacency.get(a)!.push({ id: b, delta: 0 })
     adjacency.get(b)!.push({ id: a, delta: 0 })
   }
+
+  unions.sort(([a1, b1], [a2, b2]) => (a1 === a2 ? compare(b1, b2) : compare(a1, a2)))
 
   const result = new Map<string, number>()
   for (const start of ids) {
@@ -42,6 +44,10 @@ export function assignGenerations(data: FamilyData): Map<string, number> {
   return result
 }
 
+function compare(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
 // Breadth-first from `start`; the first assignment of a person wins.
 function collectGroup(
   start: string,
@@ -52,7 +58,7 @@ function collectGroup(
   result.set(start, 0)
   for (let i = 0; i < group.length; i++) {
     const current = group[i]!
-    const neighbours = [...adjacency.get(current)!].sort((x, y) => (x.id < y.id ? -1 : 1))
+    const neighbours = [...adjacency.get(current)!].sort((x, y) => compare(x.id, y.id))
     for (const { id, delta } of neighbours) {
       if (result.has(id)) continue
       result.set(id, result.get(current)! + delta)
@@ -106,5 +112,7 @@ function relax(
     if (!lifted && !aligned) return
   }
   // The parent-child rule takes precedence over the partner rule.
-  for (let pass = 0; pass < limit && liftChildren(); pass++);
+  for (let pass = 0; pass < limit; pass++) {
+    if (!liftChildren()) break
+  }
 }

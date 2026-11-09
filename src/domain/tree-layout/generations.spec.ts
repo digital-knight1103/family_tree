@@ -113,4 +113,26 @@ describe('assignGenerations', () => {
     }
     expect(assignGenerations(reversed)).toEqual(assignGenerations(data))
   })
+
+  it('nie zależy od kolejności związków przy związku z własnym wnukiem', () => {
+    const persons = ids('a', 'b', 'c', 'd', 'e')
+    const parentChild: Array<[string, string]> = [
+      ['p_a', 'p_b'],
+      ['p_b', 'p_c'],
+      ['p_d', 'p_e'],
+    ]
+    const unions: Array<[string, string]> = [
+      ['p_a', 'p_c'],
+      ['p_c', 'p_d'],
+    ]
+    const forward = assignGenerations(buildFamily({ persons, parentChild, unions }))
+    const shuffled = assignGenerations(
+      buildFamily({
+        persons: [...persons].reverse(),
+        parentChild: [...parentChild].reverse(),
+        unions: [[...unions[1]!].reverse(), [...unions[0]!].reverse()] as Array<[string, string]>,
+      }),
+    )
+    expect(shuffled).toEqual(forward)
+  })
 })
