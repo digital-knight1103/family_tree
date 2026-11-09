@@ -61,9 +61,13 @@ test('brak pliku pokazuje demo, a start własnego drzewa tworzy plik', async ({ 
   await expect.poll(() => fs.existsSync(FAMILY_FILE)).toBe(true)
 })
 
-test('plik z danymi pokazuje miejsce na drzewo', async ({ page }) => {
+test('plik z danymi pokazuje drzewo', async ({ page }) => {
   resetDataDir('seed-copy')
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/')
-  await expect(page.getByTestId('tree-placeholder')).toContainText('Liczba osób:')
+  await expect(page.getByTestId('tree-canvas')).toBeVisible()
+  await expect(page.getByTestId('person-node')).toHaveCount(20)
   await expect(page.getByTestId('demo-banner')).toHaveCount(0)
+  expect(errors).toEqual([])
 })

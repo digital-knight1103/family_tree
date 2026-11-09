@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { TreeCanvas } from '@/features/tree'
 import DemoBanner from '@/shared/components/DemoBanner.vue'
 import EmptyTreeState from '@/shared/components/EmptyTreeState.vue'
 import InvalidDataScreen from '@/shared/components/InvalidDataScreen.vue'
@@ -38,8 +39,8 @@ const store = useFamilyStore()
   <template v-else-if="store.status === 'ready' && store.data">
     <DemoBanner v-if="store.source === 'demo'" @start="store.startOwnTree()" />
     <EmptyTreeState v-if="store.data.persons.length === 0" />
-    <p v-else data-testid="tree-placeholder" class="p-6">
-      Liczba osób: {{ store.data.persons.length }}
-    </p>
+    <div v-else class="min-h-0 flex-1">
+      <TreeCanvas :data="store.data" />
+    </div>
   </template>
 </template>
