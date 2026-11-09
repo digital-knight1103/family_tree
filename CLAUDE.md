@@ -18,6 +18,7 @@ Drzewo Rodzinne: prywatna, lokalna aplikacja (Vue 3 + TypeScript) do budowania i
 
 - `src/app/`: start aplikacji, router, główny komponent
 - `src/domain/`: model, daty, relacje, układ drzewa (czysty TS, bez Vue)
+- `src/domain/tree-layout/`: układ drzewa (pokolenia, graf, elkjs)
 - `src/data/`: dostęp do danych (`repository.ts`; HTTP w dev, statyczny seed w buildzie) i kolejka zapisów
 - `src/features/<x>/`: funkcje (drzewo, osoba, edytor, wyszukiwarka, do sprawdzenia)
 - `src/stores/`: store rodziny (Pinia); dane zmienia się wyłącznie przez `update(...)`
@@ -33,7 +34,7 @@ Folder `src/features/` powstaje w kolejnych planach.
 
 - TypeScript `strict`, Vue Composition API z `<script setup lang="ts">`.
 - Nazwy: komponenty `PascalCase.vue`, composables `useCamelCase.ts`, reszta `kebab-case`. Testy jednostkowe obok pliku (`*.spec.ts`).
-- Importy w `src/` przez alias `@/`. Wyjątek: `src/domain/` (bez plików spec), `vite-plugins/` i `scripts/` importują względnie z rozszerzeniem `.ts`, bo ładują je narzędzia Node (tsx, config Vite). Zakaz `../` wychodzącego poza folder (ESLint). Feature eksportuje API przez `index.ts`, import `@/features/<x>/<wnętrze>` spoza feature'a jest zabroniony.
+- Importy w `src/` przez alias `@/`. Wyjątek: `src/domain/` (bez plików spec), `vite-plugins/` i `scripts/` importują względnie z rozszerzeniem `.ts`, bo ładują je narzędzia Node (tsx, config Vite). Wyjątek od wyjątku: `src/domain/tree-layout/` importuje resztę domeny przez `@/domain/...` (rodzeństwo przez `./x`), bo ładują go tylko Vite i Vitest. Zakaz `../` wychodzącego poza folder (ESLint). Feature eksportuje API przez `index.ts`, import `@/features/<x>/<wnętrze>` spoza feature'a jest zabroniony.
 - Końce linii LF. Bez luźnych plików w korzeniu, martwego kodu i zakomentowanych bloków.
 - Dane i pomocniki wyłącznie testowe trafiają do `tests/fixtures/`, nigdy do `src/`.
 - Przed użyciem API biblioteki sprawdź je w Context7.
