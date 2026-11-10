@@ -4,6 +4,7 @@ import seed from '@seed/demo-family.json'
 import { genDateSortKey } from '@/domain/dates'
 import { familyDataSchema, type FamilyData } from '@/domain/schema'
 import { buildFamily } from '@tests/fixtures/build-family'
+import { buildLargeFamily } from '@tests/fixtures/large-family'
 import { centerX, countCrossings, segments } from '@tests/fixtures/layout-metrics'
 import { buildTreeGraph } from './graph'
 import { layoutTree, type PositionedNode, type TreeLayout } from './layout'
@@ -180,5 +181,55 @@ describe('layoutTree (dane demo, właściwości §6.4)', () => {
         Math.max(a!, b!) + 1,
       )
     }
+  })
+})
+
+describe('layoutTree (zmiany danych i wydajność)', () => {
+  const rowOrder = async (data: FamilyData, generations: number[]) => {
+    const graph = buildTreeGraph(data)
+    const nodes = byId(await layoutTree(graph))
+    return generations.map((generation) =>
+      graph.nodes
+        .filter((n) => n.kind === 'person' && n.generation === generation)
+        .map((n) => n.id)
+        .sort((a, b) => nodes.get(a)!.x - nodes.get(b)!.x),
+    )
+  }
+
+  it('dodanie dziecka nie przestawia starszych pokoleń', async () => {
+    const data: FamilyData = {
+      ...demo,
+      persons: [
+        ...demo.persons,
+        {
+          id: 'p_nowe_dziecko',
+          givenNames: 'Nowe',
+          surname: 'Kowalczyk',
+          sex: 'male',
+          birth: { date: { year: 2012 } },
+          living: true,
+        },
+      ],
+      parentChild: [
+        ...demo.parentChild,
+        { parentId: 'p_piotr_kowalczyk', childId: 'p_nowe_dziecko', type: 'biological' },
+        { parentId: 'p_katarzyna_kowalczyk', childId: 'p_nowe_dziecko', type: 'biological' },
+      ],
+    }
+    expect(await rowOrder(data, [0, 1, 2])).toEqual(await rowOrder(demo, [0, 1, 2]))
+  })
+
+  it('układa ~300 osób w mniej niż 3 s', { timeout: 20_000 }, async () => {
+    const large = buildLargeFamily()
+    expect(large.persons.length).toBeGreaterThanOrEqual(280)
+    expect(large.persons.length).toBeLessThanOrEqual(330)
+    await layout(demo)
+    const start = performance.now()
+    const result = await layout(large)
+    const elapsed = performance.now() - start
+    expect(result.nodes.filter((n) => n.kind === 'person')).toHaveLength(large.persons.length)
+    expect(elapsed, `układ ${large.persons.length} osób: ${Math.round(elapsed)} ms`).toBeLessThan(
+      3000,
+    )
   })
 })

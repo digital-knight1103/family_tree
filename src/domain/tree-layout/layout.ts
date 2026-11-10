@@ -41,6 +41,8 @@ const NODE_SPACING = 32
  * Rows come from partitions (person row 2g, union row 2g + 1). The left-to-right order inside
  * each row is computed by `orderNodes` and handed to ELK as positions: semi-interactive crossing
  * minimisation keeps the order of real nodes and only arranges the bends of long edges.
+ * Partitions already fix the layers, so the cheap longest-path layering is enough; the default
+ * network simplex layering took about 90% of the time (over 3 s for ~300 persons).
  */
 const LAYOUT_OPTIONS = {
   'elk.algorithm': 'layered',
@@ -48,6 +50,7 @@ const LAYOUT_OPTIONS = {
   'elk.edgeRouting': 'ORTHOGONAL',
   'elk.randomSeed': '1',
   'elk.partitioning.activate': 'true',
+  'elk.layered.layering.strategy': 'LONGEST_PATH',
   'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
   'elk.layered.crossingMinimization.semiInteractive': 'true',
   'elk.spacing.nodeNode': String(NODE_SPACING),
