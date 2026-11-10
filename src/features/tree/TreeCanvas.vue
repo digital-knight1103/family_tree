@@ -65,6 +65,9 @@ watch(
       :edge-types="edgeTypes"
       :nodes-draggable="false"
       :nodes-connectable="false"
+      :elements-selectable="false"
+      :delete-key-code="null"
+      :selection-key-code="null"
       :min-zoom="0.1"
     >
       <template #node-person="{ data: nodeData }">

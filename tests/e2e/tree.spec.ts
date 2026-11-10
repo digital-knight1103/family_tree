@@ -39,6 +39,27 @@ test('kliknięcie osoby ją zaznacza, a klik w tło zdejmuje zaznaczenie', async
   await expect(piotr).toHaveAttribute('data-selected', 'false')
 })
 
+test('Backspace, Delete i zaznaczenie ramką nie usuwają osób z płótna', async ({ page }) => {
+  resetDataDir('seed-copy')
+  await openTree(page)
+  await page.locator(PIOTR).click()
+  await page.keyboard.press('Backspace')
+  await page.keyboard.press('Delete')
+  const pane = page.locator('.vue-flow__pane')
+  const box = await pane.boundingBox()
+  if (!box) throw new Error('pane has no bounding box')
+  await page.keyboard.down('Shift')
+  await page.mouse.move(box.x + 5, box.y + 5)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width - 5, box.y + box.height - 5, { steps: 10 })
+  await page.mouse.up()
+  await page.keyboard.up('Shift')
+  await page.keyboard.press('Backspace')
+  await page.keyboard.press('Delete')
+  await expect(page.getByTestId('person-node')).toHaveCount(20)
+  await expect(page.locator('.vue-flow__edge')).toHaveCount(26)
+})
+
 test('Wyśrodkuj na mnie centruje osobę Ja', async ({ page }) => {
   resetDataDir('seed-copy')
   await openTree(page)
