@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, markRaw, toRef, watch } from 'vue'
+import { computed, markRaw, ref, toRef, watch } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
@@ -30,7 +30,7 @@ const flow = computed(() =>
 
 const selection = useSelectionStore()
 const { centerOnPerson, fitAll } = useTreeNavigation()
-const { nodes, onNodesInitialized, onNodeClick, onPaneClick } = useVueFlow(FLOW_ID)
+const { nodes, dimensions, onNodesInitialized, onNodeClick, onPaneClick } = useVueFlow(FLOW_ID)
 
 let positioned = false
 onNodesInitialized(() => {
@@ -45,13 +45,29 @@ onNodeClick(({ node }) => {
 })
 onPaneClick(() => selection.select(null))
 
-watch([() => selection.pendingFocusId, nodes], ([id]) => {
-  if (id && centerOnPerson(id)) selection.focusDone()
-})
+const root = ref<HTMLElement | null>(null)
+
+// Center only once Vue Flow has measured the pane at its current size (the side panel may have just narrowed it).
+watch(
+  [() => selection.pendingFocusId, nodes, dimensions],
+  ([id]) => {
+    if (!id) return
+    if (error.value) return selection.focusDone()
+    const el = root.value
+    if (
+      !el ||
+      el.clientWidth !== dimensions.value.width ||
+      el.clientHeight !== dimensions.value.height
+    )
+      return
+    if (centerOnPerson(id)) selection.focusDone()
+  },
+  { flush: 'post' },
+)
 </script>
 
 <template>
-  <div data-testid="tree-canvas" class="relative h-full min-h-0 w-full">
+  <div ref="root" data-testid="tree-canvas" class="relative h-full min-h-0 w-full">
     <p
       v-if="error"
       role="alert"

@@ -88,3 +88,19 @@ test('tryb demo też pokazuje drzewo', async ({ page }) => {
   )
   await expect(page.getByTestId('person-node')).toHaveCount(20)
 })
+
+test('Wyśrodkuj na mnie centruje osobę Ja także przy otwartym panelu', async ({ page }) => {
+  resetDataDir('seed-copy')
+  await openTree(page)
+  await page.locator('[data-person-id="p_andrzej_kowalczyk"]').click()
+  await expect(page.getByTestId('side-panel')).toBeVisible()
+  await page.getByRole('button', { name: 'Wyśrodkuj na mnie' }).click()
+  const canvas = page.getByTestId('tree-canvas')
+  await expect
+    .poll(async () => {
+      const node = await center(page.locator(PIOTR))
+      const area = await center(canvas)
+      return Math.hypot(node.x - area.x, node.y - area.y)
+    })
+    .toBeLessThanOrEqual(40)
+})
