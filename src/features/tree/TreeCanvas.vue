@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { computed, markRaw, toRef, watch } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
+import { Controls } from '@vue-flow/controls'
+import { MiniMap } from '@vue-flow/minimap'
+import '@vue-flow/controls/dist/style.css'
+import '@vue-flow/minimap/dist/style.css'
 import { getRepository } from '@/data'
 import type { FamilyData } from '@/domain/schema'
+import { useSelectionStore } from '@/stores/selection'
 import ElkEdge from './ElkEdge.vue'
 import PersonNode from './PersonNode.vue'
 import UnionNode from './UnionNode.vue'
+import { FLOW_ID } from './flow-id'
 import { toFlow } from './to-flow'
 import { useTreeLayout } from './useTreeLayout'
-
-const FLOW_ID = 'family-tree'
+import { useTreeNavigation } from './useTreeNavigation'
 
 const props = defineProps<{ data: FamilyData }>()
 
@@ -23,16 +28,30 @@ const flow = computed(() =>
     : { nodes: [], edges: [] },
 )
 
-const { fitView, onNodesInitialized } = useVueFlow(FLOW_ID)
-let fitted = false
+const selection = useSelectionStore()
+const { centerOnPerson, fitAll } = useTreeNavigation()
+const { onNodesInitialized, onNodeClick, onPaneClick } = useVueFlow(FLOW_ID)
+
+let positioned = false
 onNodesInitialized(() => {
-  if (fitted) return
-  fitted = true
-  void fitView({ padding: 0.1 })
+  if (positioned) return
+  positioned = true
+  const selfId = props.data.settings.selfPersonId
+  if (!selfId || !centerOnPerson(selfId)) fitAll()
 })
-watch(layout, (value) => {
-  if (!value) fitted = false
+
+onNodeClick(({ node }) => {
+  if (node.type === 'person') selection.select(node.data.view.personId)
 })
+onPaneClick(() => selection.select(null))
+
+watch(
+  () => props.data,
+  (data) => {
+    const id = selection.selectedPersonId
+    if (id && !data.persons.some((person) => person.id === id)) selection.select(null)
+  },
+)
 </script>
 
 <template>
@@ -55,9 +74,11 @@ watch(layout, (value) => {
           v-if="nodeData.view"
           :view="nodeData.view"
           :photo-url="nodeData.photoUrl"
-          :selected="false"
+          :selected="nodeData.view.personId === selection.selectedPersonId"
         />
       </template>
+      <MiniMap position="bottom-right" pannable zoomable />
+      <Controls position="bottom-left" />
     </VueFlow>
   </div>
 </template>
