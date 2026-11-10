@@ -1,17 +1,37 @@
 import type { Edge, Node } from '@vue-flow/core'
+import type { FamilyData, Person } from '@/domain/schema'
 import type { Point, TreeLayout } from '@/domain/tree-layout'
+import { personNodeView, type PersonNodeView } from './person-node-view'
 
 export interface ElkEdgeData {
   points: Point[]
 }
 
-export function toFlow(layout: TreeLayout): { nodes: Node[]; edges: Edge<ElkEdgeData>[] } {
-  const nodes: Node[] = layout.nodes.map((node) => ({
-    id: node.id,
-    type: node.kind,
-    position: { x: node.x, y: node.y },
-    data: node.kind === 'person' ? { personId: node.id.slice('person:'.length) } : {},
-  }))
+export interface PersonNodeData {
+  view: PersonNodeView
+  photoUrl?: string
+}
+
+function personData(person: Person, photoUrl: (photo: string) => string): PersonNodeData {
+  const url = person.photo ? photoUrl(person.photo) : ''
+  return { view: personNodeView(person), ...(url ? { photoUrl: url } : {}) }
+}
+
+export function toFlow(
+  layout: TreeLayout,
+  data: FamilyData,
+  photoUrl: (photo: string) => string,
+): { nodes: Node[]; edges: Edge<ElkEdgeData>[] } {
+  const persons = new Map(data.persons.map((person) => [person.id, person]))
+  const nodes: Node[] = layout.nodes.map((node) => {
+    const person = node.kind === 'person' ? persons.get(node.id.slice('person:'.length)) : undefined
+    return {
+      id: node.id,
+      type: node.kind,
+      position: { x: node.x, y: node.y },
+      data: person ? personData(person, photoUrl) : {},
+    }
+  })
   const edges: Edge<ElkEdgeData>[] = layout.edges.map((edge) => ({
     id: edge.id,
     type: 'elk',
