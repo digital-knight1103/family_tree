@@ -118,6 +118,27 @@ describe('buildTreeGraph', () => {
     expect(edgeIds(buildTreeGraph(triple))).toContain('person:p_x->person:p_c')
   })
 
+  it('dziecko trojga rodziców wisi pod parą biologiczną, nawet gdy związek adopcyjny ma mniejsze id', () => {
+    const graph = buildTreeGraph(
+      buildFamily({
+        persons: ids('m', 'f', 's', 'c'),
+        parentChild: [
+          ['p_m', 'p_c'],
+          ['p_f', 'p_c'],
+          ['p_s', 'p_c', 'adoptive'],
+        ],
+        unions: [
+          ['p_m', 'p_s'],
+          ['p_m', 'p_f'],
+        ],
+      }),
+    )
+    expect(edgeIds(graph)).toContain('union:u_2->person:p_c')
+    expect(edgeIds(graph)).toContain('person:p_s->person:p_c')
+    expect(edgeIds(graph)).not.toContain('union:u_1->person:p_c')
+    expect(edgeIds(graph)).not.toContain('person:p_f->person:p_c')
+  })
+
   it('dane demo dają 20 osób i 7 związków', () => {
     const graph = buildTreeGraph(familyDataSchema.parse(seed))
     expect(graph.nodes.filter((n) => n.kind === 'person')).toHaveLength(20)

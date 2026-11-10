@@ -91,15 +91,16 @@ export function buildTreeGraph(data: FamilyData): TreeGraph {
         Number(parentTypes.get(a) === 'adoptive') - Number(parentTypes.get(b) === 'adoptive') ||
         compare(a, b),
     )
+    // Among pairs with a union record: fewest adoptive partners first, then the smallest union id.
+    const adoptiveIn = (node: UnionNode) =>
+      node.partnerIds.filter((id) => parentTypes.get(id) === 'adoptive').length
+    const better = (a: UnionNode, b: UnionNode) =>
+      (adoptiveIn(a) - adoptiveIn(b) || compare(a.unionId!, b.unionId!)) < 0
     let pair: UnionNode | undefined
-    let best: string | undefined
     for (let i = 0; i < parents.length; i++) {
       for (let j = i + 1; j < parents.length; j++) {
         const found = unionByPair.get(pairKey(...sortedPair(parents[i]!, parents[j]!)))
-        if (found && (best === undefined || compare(found.unionId!, best) < 0)) {
-          pair = found
-          best = found.unionId!
-        }
+        if (found && (!pair || better(found, pair))) pair = found
       }
     }
     if (!pair && parents.length >= 2) {
