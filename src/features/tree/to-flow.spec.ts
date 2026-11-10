@@ -16,7 +16,9 @@ describe('toFlow', () => {
       unions: [['p_a', 'p_b']],
     })
     const layout = await layoutTree(buildTreeGraph(data))
-    const flow = toFlow(layout, data, (photo) => `/photos/${photo}`)
+    const flow = toFlow(layout, data, (person) =>
+      person.photo ? `/photos/${person.photo}` : undefined,
+    )
 
     expect(flow.nodes).toHaveLength(layout.nodes.length)
     expect(flow.edges).toHaveLength(layout.edges.length)
@@ -45,11 +47,13 @@ describe('toFlow zdjęcia', () => {
     const data = buildFamily({ persons: [{ id: 'p_a', photo: 'a.webp' }, { id: 'p_b' }] })
     const layout = await layoutTree(buildTreeGraph(data))
 
-    const withUrl = toFlow(layout, data, (photo) => `/photos/${photo}`)
+    const withUrl = toFlow(layout, data, (person) =>
+      person.photo ? `/photos/${person.photo}` : undefined,
+    )
     expect(withUrl.nodes.find((n) => n.id === 'person:p_a')!.data.photoUrl).toBe('/photos/a.webp')
     expect(withUrl.nodes.find((n) => n.id === 'person:p_b')!.data).not.toHaveProperty('photoUrl')
 
-    const empty = toFlow(layout, data, () => '')
+    const empty = toFlow(layout, data, () => undefined)
     expect(empty.nodes.find((n) => n.id === 'person:p_a')!.data).not.toHaveProperty('photoUrl')
   })
 })

@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
-import { getRepository } from '@/data'
 import { AddPersonForm } from '@/features/editor'
 import { PersonCard, PersonEditForm, personCardView } from '@/features/person'
 import { useFamilyStore } from '@/stores/family'
 import { usePanelStore } from '@/stores/panel'
+import { usePhotoStore } from '@/stores/photos'
 import { useSelectionStore } from '@/stores/selection'
 
 const family = useFamilyStore()
 const panel = usePanelStore()
+const photos = usePhotoStore()
 const selection = useSelectionStore()
 
 const card = computed(() => {
@@ -21,9 +22,10 @@ const card = computed(() => {
   return null
 })
 
-const photoUrl = computed(() =>
-  card.value?.photo ? getRepository().photoUrl(card.value.photo) : '',
-)
+const photoUrl = computed(() => {
+  const person = family.data?.persons.find((p) => p.id === card.value?.personId)
+  return person ? photos.urlFor(person) : undefined
+})
 </script>
 
 <template>

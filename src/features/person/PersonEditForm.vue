@@ -18,6 +18,7 @@ import type { Fact, Person, Sex } from '@/domain/schema'
 import { useFamilyEdit } from '@/shared/composables/useFamilyEdit'
 import { useFamilyStore } from '@/stores/family'
 import DateField from './DateField.vue'
+import PhotoField from './PhotoField.vue'
 
 const props = defineProps<{ personId: string }>()
 const emit = defineEmits<{ done: [] }>()
@@ -106,6 +107,8 @@ function markSelf() {
     @submit.prevent="emit('done')"
   >
     <h2 class="text-lg font-semibold">Edycja osoby</h2>
+
+    <PhotoField :person-id="personId" />
 
     <div class="space-y-1.5">
       <Label for="edit-given-names">Imiona</Label>

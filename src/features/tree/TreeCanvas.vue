@@ -5,7 +5,7 @@ import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
-import { getRepository } from '@/data'
+import { usePhotoStore } from '@/stores/photos'
 import type { RelativeKind } from '@/domain/family-edits'
 import type { FamilyData } from '@/domain/schema'
 import { useSelectionStore } from '@/stores/selection'
@@ -25,11 +25,10 @@ const edgeTypes = { elk: markRaw(ElkEdge) }
 
 const { layout, error } = useTreeLayout(toRef(props, 'data'))
 const flow = computed(() =>
-  layout.value
-    ? toFlow(layout.value, props.data, (photo) => getRepository().photoUrl(photo))
-    : { nodes: [], edges: [] },
+  layout.value ? toFlow(layout.value, props.data, photos.urlFor) : { nodes: [], edges: [] },
 )
 
+const photos = usePhotoStore()
 const selection = useSelectionStore()
 const { centerOnPerson, fitAll } = useTreeNavigation()
 const { nodes, dimensions, onNodesInitialized, onNodeClick, onPaneClick } = useVueFlow(FLOW_ID)

@@ -12,15 +12,18 @@ export interface PersonNodeData {
   photoUrl?: string
 }
 
-function personData(person: Person, photoUrl: (photo: string) => string): PersonNodeData {
-  const url = person.photo ? photoUrl(person.photo) : ''
+function personData(
+  person: Person,
+  photoUrl: (person: Person) => string | undefined,
+): PersonNodeData {
+  const url = photoUrl(person)
   return { view: personNodeView(person), ...(url ? { photoUrl: url } : {}) }
 }
 
 export function toFlow(
   layout: TreeLayout,
   data: FamilyData,
-  photoUrl: (photo: string) => string,
+  photoUrl: (person: Person) => string | undefined,
 ): { nodes: Node[]; edges: Edge<ElkEdgeData>[] } {
   const persons = new Map(data.persons.map((person) => [person.id, person]))
   const nodes: Node[] = layout.nodes.map((node) => {

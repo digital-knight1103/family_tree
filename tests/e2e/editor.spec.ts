@@ -119,3 +119,32 @@ test('edycja: data urodzenia z podglądem trafia na kartę i do pliku', async ({
     })
     .toEqual({ year: 1890, qualifier: 'about' })
 })
+
+test('zdjęcie: dodanie, zapis jako WebP i usunięcie', async ({ page }) => {
+  resetDataDir('seed-copy')
+  const photoFile = path.join(E2E_DATA_DIR, 'photos', 'p_piotr_kowalczyk.webp')
+  await page.goto('/')
+  await page.locator(PIOTR).click()
+  await page.getByRole('button', { name: 'Edytuj' }).click()
+  await expect(page.locator(`${PIOTR} img`)).toHaveCount(0)
+
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles(path.join(import.meta.dirname, '..', 'fixtures', 'portrait-2x2.png'))
+  await expect(page.locator(`${PIOTR} img`)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Zmień zdjęcie' })).toBeVisible()
+  await expect.poll(() => fs.existsSync(photoFile)).toBe(true)
+  await expect
+    .poll(() => {
+      const data = JSON.parse(fs.readFileSync(FAMILY_FILE, 'utf8')) as {
+        persons: Array<{ id: string; photo?: string }>
+      }
+      return data.persons.find((p) => p.id === 'p_piotr_kowalczyk')?.photo
+    })
+    .toBe('p_piotr_kowalczyk.webp')
+
+  await page.getByRole('button', { name: 'Usuń zdjęcie' }).click()
+  await expect(page.locator(`${PIOTR} img`)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Dodaj zdjęcie' })).toBeVisible()
+  await expect.poll(() => fs.existsSync(photoFile)).toBe(false)
+})
