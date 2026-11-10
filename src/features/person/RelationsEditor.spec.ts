@@ -72,6 +72,7 @@ describe('RelationsEditor', () => {
       'Osoba może mieć najwyżej dwoje rodziców biologicznych.',
     )
     expect(family.data!.parentChild[2]!.type).toBe('adoptive')
+    expect((row.get('select').element as HTMLSelectElement).value).toBe('adoptive')
   })
 
   it('zmiana typu relacji zapisuje z immediate', async () => {

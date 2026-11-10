@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { FamilyData } from '@/domain/schema'
 import { useFamilyStore } from '@/stores/family'
 import { buildFamily } from '@tests/fixtures/build-family'
+import PhotoField from './PhotoField.vue'
 import DeletePersonDialog from './DeletePersonDialog.vue'
 
 const repository = vi.hoisted(() => ({
@@ -87,6 +88,18 @@ describe('DeletePersonDialog', () => {
     expect(family.data!.unions).toEqual([])
     expect(updates).toEqual([{ immediate: true }])
     expect(repository.deletePhoto).toHaveBeenCalledWith('p_a')
+  })
+
+  it('nieudane usunięcie pliku: osoba zostaje, komunikat jest w oknie, a inny PhotoField go nie pokazuje', async () => {
+    repository.deletePhoto.mockRejectedValue(new Error('Nie udało się usunąć zdjęcia.'))
+    const family = setup(data())
+    await open()
+    button('Usuń').click()
+    await flushPromises()
+    expect(family.data!.persons).toHaveLength(3)
+    expect(body()).toContain('Nie udało się usunąć zdjęcia.')
+    const other = mount(PhotoField, { props: { personId: 'p_b' } })
+    expect(other.text()).not.toContain('Nie udało się usunąć zdjęcia.')
   })
 
   it('osoba bez zdjęcia: nie woła deletePhoto', async () => {

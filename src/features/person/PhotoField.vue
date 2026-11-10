@@ -60,6 +60,8 @@ async function onFile(event: Event) {
       tabindex="-1"
       @change="onFile"
     />
-    <p v-if="photos.error" role="alert" class="text-sm text-destructive">{{ photos.error }}</p>
+    <p v-if="photos.errorFor(personId)" role="alert" class="text-sm text-destructive">
+      {{ photos.errorFor(personId) }}
+    </p>
   </div>
 </template>

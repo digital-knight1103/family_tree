@@ -12,8 +12,18 @@ function messageOf(error: unknown): string {
 export const usePhotoStore = defineStore('photos', () => {
   const family = useFamilyStore()
   const error = ref<string | null>(null)
+  const errorPersonId = ref<string | null>(null)
   // The file name is always <personId>.webp, so a replaced photo needs a new query to bypass the browser cache.
   const versions = reactive<Record<string, number>>({})
+
+  function errorFor(personId: string): string | null {
+    return errorPersonId.value === personId ? error.value : null
+  }
+
+  function fail(personId: string, e: unknown) {
+    errorPersonId.value = personId
+    error.value = messageOf(e)
+  }
 
   function urlFor(person: Person): string | undefined {
     if (!person.photo) return undefined
@@ -31,15 +41,18 @@ export const usePhotoStore = defineStore('photos', () => {
       versions[personId] = (versions[personId] ?? 0) + 1
       family.update((draft) => updatePerson(draft, personId, { photo }), { immediate: true })
     } catch (e) {
-      error.value = messageOf(e)
+      fail(personId, e)
     }
   }
 
-  async function discard(personId: string): Promise<void> {
+  async function discard(personId: string): Promise<boolean> {
+    error.value = null
     try {
       await getRepository().deletePhoto(personId)
+      return true
     } catch (e) {
-      error.value = messageOf(e)
+      fail(personId, e)
+      return false
     }
   }
 
@@ -50,11 +63,11 @@ export const usePhotoStore = defineStore('photos', () => {
         immediate: true,
       })
     } catch (e) {
-      error.value = messageOf(e)
+      fail(personId, e)
       return
     }
     await discard(personId)
   }
 
-  return { error, urlFor, upload, remove, discard }
+  return { error, errorFor, urlFor, upload, remove, discard }
 })

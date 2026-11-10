@@ -80,7 +80,11 @@ function placeOf(union: Union): string {
 
 function changeType(parentId: string, childId: string, event: Event) {
   const type = (event.target as HTMLSelectElement).value as ParentChild['type']
-  run((draft) => setParentChildType(draft, parentId, childId, type), { immediate: true })
+  const stored = edgeType(parentId, childId)
+  run((draft) => setParentChildType(draft, parentId, childId, type), {
+    immediate: true,
+  })
+  if (error.value) (event.target as HTMLSelectElement).value = stored
 }
 
 function removeRelation(parentId: string, childId: string) {
@@ -89,7 +93,9 @@ function removeRelation(parentId: string, childId: string) {
 
 function changeUnionType(unionId: string, event: Event) {
   const type = (event.target as HTMLSelectElement).value as Union['type']
+  const stored = family.data?.unions.find((u) => u.id === unionId)?.type
   run((draft) => updateUnion(draft, unionId, { type }), { immediate: true })
+  if (error.value && stored) (event.target as HTMLSelectElement).value = stored
 }
 
 function onStartDate(unionId: string, date: GenDate | undefined) {

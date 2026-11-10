@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -26,16 +25,20 @@ const person = computed(() => family.data?.persons.find((p) => p.id === props.pe
 const displayName = computed(() => (person.value ? personNodeView(person.value).displayName : ''))
 const relations = computed(() => (family.data ? relationCount(family.data, props.personId) : 0))
 
+const open = ref(false)
+
+// The photo file goes first: if it cannot be deleted the person stays and the error is shown here,
+// because after the person is gone the panel (and this dialog) closes.
 async function confirm() {
   const id = props.personId
-  const result = run((draft) => deletePerson(draft, id), { immediate: true })
-  if (result?.photo) await photos.discard(id)
+  if (person.value?.photo && !(await photos.discard(id))) return
+  if (run((draft) => deletePerson(draft, id), { immediate: true }) !== undefined) open.value = false
 }
 </script>
 
 <template>
   <div v-if="person">
-    <AlertDialog>
+    <AlertDialog v-model:open="open">
       <AlertDialogTrigger as-child>
         <Button type="button" variant="destructive">Usuń osobę</Button>
       </AlertDialogTrigger>
@@ -44,9 +47,12 @@ async function confirm() {
         <AlertDialogDescription>
           Zostanie usuniętych relacji: {{ relations }}.
         </AlertDialogDescription>
+        <p v-if="photos.errorFor(personId)" role="alert" class="text-sm text-destructive">
+          {{ photos.errorFor(personId) }}
+        </p>
         <div class="flex justify-end gap-2">
           <AlertDialogCancel>Anuluj</AlertDialogCancel>
-          <AlertDialogAction @click="confirm">Usuń</AlertDialogAction>
+          <Button type="button" @click="confirm">Usuń</Button>
         </div>
       </AlertDialogContent>
     </AlertDialog>
