@@ -22,9 +22,11 @@ import { useFamilyEdit } from '@/shared/composables/useFamilyEdit'
 import { useFamilyStore } from '@/stores/family'
 import { useSelectionStore } from '@/stores/selection'
 
-type Props = { mode: 'relative'; anchorId: string; relation: RelativeKind } | { mode: 'first' }
-
-const props = defineProps<Props>()
+const props = defineProps<{
+  mode: 'relative' | 'first'
+  anchorId?: string
+  relation?: RelativeKind
+}>()
 const emit = defineEmits<{ done: [personId: string]; cancel: [] }>()
 
 const NO_CO_PARENT = 'none'
