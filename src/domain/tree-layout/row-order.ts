@@ -1,3 +1,4 @@
+import { connectedComponents } from './components'
 import type { TreeGraph, TreeNode } from './graph'
 
 const SWEEPS = 4
@@ -18,11 +19,14 @@ const mean = (values: number[]) => values.reduce((sum, v) => sum + v, 0) / value
 /**
  * Orders the nodes of every row left to right, so that partners stand next to each other,
  * siblings follow their birth order and lines cross as little as possible (barycentre sweeps over
- * blocks of partners). Returns the graph nodes in that order; the layout engine keeps it.
+ * blocks of partners). Connected groups never interleave: each row holds the main tree first,
+ * then the smaller groups in the order of `connectedComponents`.
+ * Returns the graph nodes in that order; the layout engine keeps it.
  */
 export function orderNodes(graph: TreeGraph): TreeNode[] {
   const rank = new Map(graph.nodes.map((n, i) => [n.id, i]))
   const byId = new Map(graph.nodes.map((n) => [n.id, n]))
+  const componentOf = connectedComponents(graph)
   const generationOf = (id: string) => byId.get(id)!.generation
 
   // Families: a union node or a single parent, with its children.
@@ -140,9 +144,10 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
         members,
         key: known.length > 0 ? mean(known) : mean(current),
         rank: Math.min(...members.map((id) => rank.get(id)!)),
+        component: componentOf.get(members[0]!)!,
       }
     })
-    keyed.sort((a, b) => a.key - b.key || a.rank - b.rank)
+    keyed.sort((a, b) => a.component - b.component || a.key - b.key || a.rank - b.rank)
     row.blocks = enforceSiblingOrder(keyed.map((k) => k.members))
     row.order = row.blocks.flat()
     refresh(row)
@@ -187,6 +192,7 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
     (a, b) =>
       a.generation - b.generation ||
       Number(a.kind === 'union') - Number(b.kind === 'union') ||
+      componentOf.get(a.id)! - componentOf.get(b.id)! ||
       order.get(a.id)! - order.get(b.id)! ||
       compare(a.id, b.id),
   )

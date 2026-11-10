@@ -1,4 +1,5 @@
 import ELK, { type ElkNode, type ElkPort } from 'elkjs/lib/elk.bundled.js'
+import { connectedComponents } from './components'
 import type { TreeEdge, TreeGraph, TreeNode } from './graph'
 import { orderNodes } from './row-order'
 
@@ -36,6 +37,7 @@ export interface TreeLayout {
 }
 
 const NODE_SPACING = 32
+const COMPONENT_SPACING = 2 * NODE_SPACING
 
 /**
  * Rows come from partitions (person row 2g, union row 2g + 1). The left-to-right order inside
@@ -43,6 +45,8 @@ const NODE_SPACING = 32
  * minimisation keeps the order of real nodes and only arranges the bends of long edges.
  * Partitions already fix the layers, so the cheap longest-path layering is enough; the default
  * network simplex layering took about 90% of the time (over 3 s for ~300 persons).
+ * Connected groups stay in one ELK graph (`separateConnectedComponents: false`), so their rows
+ * line up; `separateGroups` then moves them apart horizontally.
  */
 const LAYOUT_OPTIONS = {
   'elk.algorithm': 'layered',
@@ -50,6 +54,7 @@ const LAYOUT_OPTIONS = {
   'elk.edgeRouting': 'ORTHOGONAL',
   'elk.randomSeed': '1',
   'elk.partitioning.activate': 'true',
+  'elk.separateConnectedComponents': 'false',
   'elk.layered.layering.strategy': 'LONGEST_PATH',
   'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
   'elk.layered.crossingMinimization.semiInteractive': 'true',
@@ -166,5 +171,44 @@ export async function layoutTree(graph: TreeGraph): Promise<TreeLayout> {
     }
     return { ...edge, points }
   })
-  return { nodes, edges, width: result.width ?? 0, height: result.height ?? 0 }
+  const width = separateGroups(graph, nodes, edges)
+  return { nodes, edges, width, height: result.height ?? 0 }
+}
+
+/**
+ * ELK keeps the order inside each row, but packs separate groups into each other's columns. Each
+ * group (in the order of `connectedComponents`, main tree first) is shifted to start right of the
+ * previous one; groups share no edges, so the shift changes nothing inside a group. Returns the
+ * new width, keeping ELK's padding on both sides.
+ */
+function separateGroups(graph: TreeGraph, nodes: PositionedNode[], edges: RoutedEdge[]): number {
+  const componentOf = connectedComponents(graph)
+  const extents = new Map<number, { left: number; right: number }>()
+  const extend = (component: number, left: number, right: number) => {
+    const extent = extents.get(component) ?? { left, right }
+    extents.set(component, {
+      left: Math.min(extent.left, left),
+      right: Math.max(extent.right, right),
+    })
+  }
+  for (const node of nodes) extend(componentOf.get(node.id)!, node.x, node.x + node.width)
+  for (const edge of edges) {
+    for (const { x } of edge.points) extend(componentOf.get(edge.source)!, x, x)
+  }
+  const components = [...extents.keys()].sort((a, b) => a - b)
+  if (components.length === 0) return 0
+  const padding = extents.get(components[0]!)!.left
+  const shift = new Map<number, number>()
+  let cursor = padding
+  for (const component of components) {
+    const { left, right } = extents.get(component)!
+    shift.set(component, cursor - left)
+    cursor += right - left + COMPONENT_SPACING
+  }
+  for (const node of nodes) node.x += shift.get(componentOf.get(node.id)!)!
+  for (const edge of edges) {
+    const dx = shift.get(componentOf.get(edge.source)!)!
+    for (const point of edge.points) point.x += dx
+  }
+  return cursor - COMPONENT_SPACING + padding
 }

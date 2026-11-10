@@ -136,20 +136,67 @@ describe('layoutTree (dane demo, właściwości §6.4)', () => {
     expect(await layout(reversed)).toEqual(first)
   })
 
-  it('osoba niepołączona jest obok i nie nachodzi na resztę', async () => {
+  it('osobne grupy i osoba niepołączona stoją obok drzewa, w tych samych rzędach', async () => {
+    const stranger = (id: string, birth: number) => ({
+      id,
+      givenNames: id,
+      surname: 'Obcy',
+      sex: 'unknown' as const,
+      living: false,
+      birth: { date: { year: birth } },
+    })
     const data: FamilyData = {
       ...demo,
       persons: [
         ...demo.persons,
-        { id: 'p_samotna', givenNames: 'Samotna', surname: 'Osoba', sex: 'female', living: true },
+        stranger('p_obcy_ojciec', 1900),
+        stranger('p_obca_matka', 1902),
+        stranger('p_obce_dziecko', 1930),
+        stranger('p_samotna', 1950),
+      ],
+      parentChild: [
+        ...demo.parentChild,
+        { parentId: 'p_obcy_ojciec', childId: 'p_obce_dziecko', type: 'biological' },
+        { parentId: 'p_obca_matka', childId: 'p_obce_dziecko', type: 'biological' },
+      ],
+      unions: [
+        ...demo.unions,
+        { id: 'u_obcy', partnerIds: ['p_obcy_ojciec', 'p_obca_matka'], type: 'marriage' },
       ],
     }
-    const result = await layout(data)
-    const lone = result.nodes.find((n) => n.id === 'person:p_samotna')
-    expect(lone).toBeDefined()
+    const graph = buildTreeGraph(data)
+    const result = await layoutTree(graph)
+    const nodes = byId(result)
+    const groupOf = (ids: string[]) => ids.map((id) => nodes.get(`person:${id}`)!)
+    const main = groupOf(demo.persons.map((p) => p.id))
+    const other = groupOf(['p_obcy_ojciec', 'p_obca_matka', 'p_obce_dziecko'])
+    const lone = groupOf(['p_samotna'])
+    const range = (group: PositionedNode[]) => [
+      Math.min(...group.map((n) => n.x)),
+      Math.max(...group.map((n) => n.x + n.width)),
+    ]
+    const disjoint = (a: PositionedNode[], b: PositionedNode[]) => {
+      const [a0, a1] = range(a)
+      const [b0, b1] = range(b)
+      return a1! <= b0! || b1! <= a0!
+    }
+    expect(disjoint(main, other), 'osobna rodzina nachodzi w poziomie na drzewo').toBe(true)
+    expect(disjoint(main, lone), 'osoba samotna nachodzi w poziomie na drzewo').toBe(true)
+    expect(disjoint(other, lone), 'osoba samotna nachodzi na osobną rodzinę').toBe(true)
+
+    const generationOf = new Map(graph.nodes.map((n) => [n.id, n.generation]))
+    const rowY = (generation: number) => main.find((n) => generationOf.get(n.id) === generation)!.y
+    for (const node of [...other, ...lone]) {
+      expect(node.y, `${nameOf(data, node.id)}: rząd pokolenia`).toBe(
+        rowY(generationOf.get(node.id)!),
+      )
+    }
     for (const node of result.nodes) {
-      if (node.id === lone!.id) continue
-      expect(overlaps(lone!, node), `nachodzi na ${nameOf(data, node.id)}`).toBe(false)
+      for (const otherNode of result.nodes) {
+        if (node.id < otherNode.id) {
+          expect(overlaps(node, otherNode), `${node.id} nachodzi na ${otherNode.id}`).toBe(false)
+        }
+      }
     }
   })
 
