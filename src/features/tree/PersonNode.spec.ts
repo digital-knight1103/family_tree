@@ -58,6 +58,7 @@ describe('PersonNode', () => {
     const root = mountNode({ view: { unknown: true } }).get('[data-testid="person-node"]')
     expect(root.attributes('data-unknown')).toBeDefined()
     expect(root.classes()).toContain('border-dashed')
+    expect(root.classes()).toContain('opacity-70')
     expect(
       mountNode().get('[data-testid="person-node"]').attributes('data-unknown'),
     ).toBeUndefined()

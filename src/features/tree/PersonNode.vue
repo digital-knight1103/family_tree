@@ -13,7 +13,7 @@ defineProps<{ view: PersonNodeView; photoUrl?: string; selected: boolean }>()
     :data-unknown="view.unknown ? '' : undefined"
     :data-selected="selected ? 'true' : 'false'"
     class="relative flex items-center gap-2 overflow-hidden rounded-md border border-l-4 bg-card px-2 text-card-foreground data-[selected=true]:ring-2 data-[selected=true]:ring-ring data-[sex=female]:border-l-rose-400 data-[sex=male]:border-l-sky-500 data-[sex=unknown]:border-l-muted-foreground"
-    :class="{ 'border-dashed': view.unknown }"
+    :class="{ 'border-dashed bg-muted/50 opacity-70': view.unknown }"
     :style="{ width: `${PERSON_NODE.width}px`, height: `${PERSON_NODE.height}px` }"
   >
     <img
