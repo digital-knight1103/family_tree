@@ -1,4 +1,4 @@
-﻿allowBuilds:
+allowBuilds:
   esbuild: true
   simple-git-hooks: false
   vue-demi: false

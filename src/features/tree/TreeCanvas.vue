@@ -56,7 +56,13 @@ watch(
 
 <template>
   <div data-testid="tree-canvas" class="relative h-full min-h-0 w-full">
-    <p v-if="error" role="alert" class="p-6 text-destructive">{{ error }}</p>
+    <p
+      v-if="error"
+      role="alert"
+      class="absolute inset-x-0 top-0 z-10 p-6 text-destructive pointer-events-none"
+    >
+      {{ error }}
+    </p>
     <VueFlow
       :id="FLOW_ID"
       :nodes="flow.nodes"
@@ -68,7 +74,7 @@ watch(
       :elements-selectable="false"
       :delete-key-code="null"
       :selection-key-code="null"
-      :min-zoom="0.1"
+      :min-zoom="0.02"
     >
       <template #node-person="{ data: nodeData }">
         <PersonNode

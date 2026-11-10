@@ -67,8 +67,8 @@ export function buildTreeGraph(data: FamilyData): TreeGraph {
     if (!rank.has(a) || !rank.has(b)) continue
     const key = pairKey(a, b)
     // The union with the smallest id represents the pair.
-    if (!unionByPair.has(key)) unionByPair.set(key, addUnionNode(`union:${id}`, id, a, b))
-    else addUnionNode(`union:${id}`, id, a, b)
+    const node = addUnionNode(`union:${id}`, id, a, b)
+    if (!unionByPair.has(key)) unionByPair.set(key, node)
   }
 
   const edges = new Map<string, TreeEdge>()

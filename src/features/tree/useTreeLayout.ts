@@ -26,8 +26,9 @@ export function useTreeLayout(data: Ref<FamilyData | null>, layoutFn: LayoutFn =
         if (request !== latest) return
         layout.value = result
         error.value = null
-      } catch {
+      } catch (e) {
         if (request !== latest) return
+        console.error(e)
         error.value = 'Nie udało się ułożyć drzewa'
       }
     },

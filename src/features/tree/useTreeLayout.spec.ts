@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { effectScope, nextTick, ref } from 'vue'
 import { emptyFamilyData, type FamilyData } from '@/domain/schema'
 import type { TreeLayout } from '@/domain/tree-layout'
@@ -32,6 +32,12 @@ function setup() {
 const flush = () => new Promise((resolve) => setTimeout(resolve))
 
 describe('useTreeLayout', () => {
+  let consoleError: MockInstance<typeof console.error>
+  beforeEach(() => {
+    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+  afterEach(() => consoleError.mockRestore())
+
   it('wygrywa ostatnia zmiana danych', async () => {
     const { data, calls, layout } = setup()
     data.value = emptyFamilyData()
@@ -59,9 +65,11 @@ describe('useTreeLayout', () => {
 
   it('błąd układu trafia do error, a nie wyjątek', async () => {
     const { data, calls, layout, error } = setup()
-    calls[0]!.reject(new Error('elk'))
+    const failure = new Error('elk')
+    calls[0]!.reject(failure)
     await flush()
     expect(error.value).toBe('Nie udało się ułożyć drzewa')
+    expect(consoleError).toHaveBeenCalledWith(failure)
     expect(layout.value).toBeNull()
 
     data.value = emptyFamilyData()
