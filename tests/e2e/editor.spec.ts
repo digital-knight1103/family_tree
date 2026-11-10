@@ -197,3 +197,88 @@ test('usuwanie osoby: „Anuluj” zostawia wszystko bez zmian', async ({ page }
   await expect(page.getByTestId('person-edit-form')).toBeVisible()
   expect(personIds()).toContain('p_piotr_kowalczyk')
 })
+
+test('trzy pokolenia od zera: osoba, rodzice ze związkiem, dziecko i fakty w pliku', async ({
+  page,
+}) => {
+  resetDataDir('empty')
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Rozpocznij własne drzewo' }).click()
+  await page.getByLabel('Imiona').fill('Jan')
+  await page.getByRole('button', { name: 'Dodaj', exact: true }).click()
+  const jan = page.locator('[data-testid="person-node"]', { hasText: 'Jan' })
+  await expect(jan).toHaveAttribute('data-selected', 'true')
+
+  for (const name of ['Adam', 'Ewa']) {
+    await jan.click()
+    await page.getByRole('button', { name: 'Dodaj rodzica' }).click()
+    await page.getByLabel('Imiona').fill(name)
+    await page.getByRole('button', { name: 'Dodaj', exact: true }).click()
+    await expect(page.locator('[data-testid="person-node"]', { hasText: name })).toBeVisible()
+  }
+
+  await jan.click()
+  await page.getByRole('button', { name: 'Dodaj dziecko' }).click()
+  await page.getByLabel('Imiona').fill('Ola')
+  await page.getByRole('button', { name: 'Dodaj', exact: true }).click()
+  await expect(page.getByTestId('person-node')).toHaveCount(4)
+
+  await page.locator('[data-testid="person-node"]', { hasText: 'Adam' }).click()
+  await page.getByRole('button', { name: 'Edytuj' }).click()
+  await page.getByLabel('Data urodzenia').fill('ok. 1890')
+  await page.locator('#edit-birth-unconfirmed').click()
+  await page.getByLabel('Notatki badawcze').fill('Sprawdzić w księgach parafialnych')
+  await page.getByRole('button', { name: 'Gotowe' }).click()
+
+  type Saved = {
+    persons: Array<{
+      id: string
+      givenNames: string
+      birth?: { date?: unknown; unconfirmed?: boolean }
+      researchNotes?: string
+    }>
+    parentChild: Array<{ parentId: string; childId: string }>
+    unions: Array<{ partnerIds: string[] }>
+  }
+  await expect
+    .poll(() => {
+      const data = JSON.parse(fs.readFileSync(FAMILY_FILE, 'utf8')) as Saved
+      const id = (name: string) => data.persons.find((p) => p.givenNames === name)?.id
+      const adam = data.persons.find((p) => p.givenNames === 'Adam')
+      const hasEdge = (parent: string, child: string) =>
+        data.parentChild.some((r) => r.parentId === id(parent) && r.childId === id(child))
+      return (
+        data.persons.length === 4 &&
+        hasEdge('Adam', 'Jan') &&
+        hasEdge('Ewa', 'Jan') &&
+        hasEdge('Jan', 'Ola') &&
+        data.unions.some(
+          (u) => u.partnerIds.includes(id('Adam')!) && u.partnerIds.includes(id('Ewa')!),
+        ) &&
+        JSON.stringify(adam?.birth) ===
+          JSON.stringify({ date: { year: 1890, qualifier: 'about' }, unconfirmed: true }) &&
+        adam?.researchNotes === 'Sprawdzić w księgach parafialnych'
+      )
+    })
+    .toBe(true)
+})
+
+test('trzeci rodzic biologiczny jest blokowany z komunikatem', async ({ page }) => {
+  resetDataDir('seed-copy')
+  await page.goto('/')
+  await page.locator(PIOTR).click()
+  await page.getByRole('button', { name: 'Dodaj rodzica' }).click()
+  await expect(page.getByTestId('add-person-form')).toContainText(
+    'Osoba może mieć najwyżej dwoje rodziców biologicznych.',
+  )
+  await expect(page.getByRole('button', { name: 'Dodaj', exact: true })).toBeDisabled()
+})
+
+test('tryb demo: karta osoby działa, ale bez „Edytuj” i „Usuń osobę”', async ({ page }) => {
+  resetDataDir('empty')
+  await page.goto('/')
+  await page.locator(PIOTR).click()
+  await expect(page.getByTestId('person-card')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Edytuj' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Usuń osobę' })).toHaveCount(0)
+})
