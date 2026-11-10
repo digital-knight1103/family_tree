@@ -218,6 +218,35 @@ describe('useFamilyStore', () => {
     expect(store.data).toBe(before)
   })
 
+  it('canEdit is true only for a writable user tree without conflict', async () => {
+    const store = useFamilyStore()
+    expect(store.canEdit).toBe(false)
+    repo.load.mockResolvedValue(userResult(emptyFamilyData()))
+    repo.save.mockResolvedValueOnce({ kind: 'conflict' })
+    await store.load()
+    expect(store.canEdit).toBe(true)
+    store.update(addPerson('p_a'))
+    await vi.advanceTimersByTimeAsync(500)
+    expect(store.saveStatus).toBe('conflict')
+    expect(store.canEdit).toBe(false)
+  })
+
+  it('canEdit is false for demo and read-only data', async () => {
+    repo.load.mockResolvedValue({
+      kind: 'ok',
+      data: buildFamily({ persons: [{ id: 'p_a' }] }),
+      source: 'demo',
+      readOnly: true,
+    })
+    const store = useFamilyStore()
+    await store.load()
+    expect(store.canEdit).toBe(false)
+    repo.load.mockResolvedValue({ ...userResult(emptyFamilyData()), readOnly: true })
+    await store.load()
+    expect(store.source).toBe('user')
+    expect(store.canEdit).toBe(false)
+  })
+
   it('startOwnTree gives an empty user tree that can be saved', async () => {
     repo.createNew.mockResolvedValue(userResult(emptyFamilyData(), 'created'))
     const store = useFamilyStore()

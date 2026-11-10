@@ -30,7 +30,7 @@ const flow = computed(() =>
 
 const selection = useSelectionStore()
 const { centerOnPerson, fitAll } = useTreeNavigation()
-const { onNodesInitialized, onNodeClick, onPaneClick } = useVueFlow(FLOW_ID)
+const { nodes, onNodesInitialized, onNodeClick, onPaneClick } = useVueFlow(FLOW_ID)
 
 let positioned = false
 onNodesInitialized(() => {
@@ -45,13 +45,9 @@ onNodeClick(({ node }) => {
 })
 onPaneClick(() => selection.select(null))
 
-watch(
-  () => props.data,
-  (data) => {
-    const id = selection.selectedPersonId
-    if (id && !data.persons.some((person) => person.id === id)) selection.select(null)
-  },
-)
+watch([() => selection.pendingFocusId, nodes], ([id]) => {
+  if (id && centerOnPerson(id)) selection.focusDone()
+})
 </script>
 
 <template>

@@ -32,10 +32,10 @@ describe('CenterOnSelfButton', () => {
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()
   })
 
-  it('wyśrodkowuje i zaznacza osobę „ja”', async () => {
+  it('zaznacza i wyśrodkowuje osobę „ja”', async () => {
     const wrapper = mountWith('p_2')
     await wrapper.find('button').trigger('click')
-    expect(nav.centerOnPerson).toHaveBeenCalledWith('p_2')
     expect(useSelectionStore().selectedPersonId).toBe('p_2')
+    await vi.waitFor(() => expect(nav.centerOnPerson).toHaveBeenCalledWith('p_2'))
   })
 })

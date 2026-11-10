@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SidePanel from '@/app/SidePanel.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { TreeCanvas } from '@/features/tree'
@@ -39,8 +40,11 @@ const store = useFamilyStore()
   <template v-else-if="store.status === 'ready' && store.data">
     <DemoBanner v-if="store.source === 'demo'" @start="store.startOwnTree()" />
     <EmptyTreeState v-if="store.data.persons.length === 0" />
-    <div v-else class="min-h-0 flex-1">
-      <TreeCanvas :data="store.data" />
+    <div v-else class="flex min-h-0 flex-1">
+      <div class="min-w-0 flex-1">
+        <TreeCanvas :data="store.data" />
+      </div>
+      <SidePanel />
     </div>
   </template>
 </template>

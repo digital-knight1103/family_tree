@@ -22,6 +22,9 @@ export const useFamilyStore = defineStore('family', () => {
 
   const saveStatus = computed(() => queue.value?.status.value ?? 'idle')
   const saveError = computed(() => queue.value?.lastError.value ?? null)
+  const canEdit = computed(
+    () => source.value === 'user' && !readOnly.value && saveStatus.value !== 'conflict',
+  )
 
   function apply(result: LoadResult) {
     loadError.value = null
@@ -110,6 +113,7 @@ export const useFamilyStore = defineStore('family', () => {
     loadError,
     saveStatus,
     saveError,
+    canEdit,
     load,
     startOwnTree,
     update,
