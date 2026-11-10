@@ -56,9 +56,7 @@ watch(
 
 <template>
   <div data-testid="tree-canvas" class="relative h-full min-h-0 w-full">
-    <p v-if="error" role="alert" class="p-6 text-destructive">
-      Nie udało się ułożyć drzewa: {{ error }}
-    </p>
+    <p v-if="error" role="alert" class="p-6 text-destructive">{{ error }}</p>
     <VueFlow
       :id="FLOW_ID"
       :nodes="flow.nodes"

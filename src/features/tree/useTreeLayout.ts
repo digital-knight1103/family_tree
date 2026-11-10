@@ -2,27 +2,33 @@ import { ref, watch, type Ref } from 'vue'
 import type { FamilyData } from '@/domain/schema'
 import { buildTreeGraph, layoutTree, type TreeLayout } from '@/domain/tree-layout'
 
-export function useTreeLayout(data: Ref<FamilyData | null>) {
+export type LayoutFn = (data: FamilyData) => Promise<TreeLayout>
+
+const defaultLayout: LayoutFn = (data) => layoutTree(buildTreeGraph(data))
+
+/** The newest request wins; the previous layout stays visible while a new one is computed. */
+export function useTreeLayout(data: Ref<FamilyData | null>, layoutFn: LayoutFn = defaultLayout) {
   const layout = ref<TreeLayout | null>(null)
   const error = ref<string | null>(null)
-  let run = 0
+  let latest = 0
 
   watch(
     data,
     async (value) => {
-      const current = ++run
+      const request = ++latest
       if (!value) {
         layout.value = null
+        error.value = null
         return
       }
       try {
-        const result = await layoutTree(buildTreeGraph(value))
-        if (current !== run) return
+        const result = await layoutFn(value)
+        if (request !== latest) return
         layout.value = result
         error.value = null
-      } catch (e) {
-        if (current !== run) return
-        error.value = e instanceof Error ? e.message : String(e)
+      } catch {
+        if (request !== latest) return
+        error.value = 'Nie udało się ułożyć drzewa'
       }
     },
     { immediate: true },
