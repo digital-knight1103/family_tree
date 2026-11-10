@@ -31,8 +31,8 @@ Ten plan obejmuje fazy 1–3 z sekcji 11 specyfikacji. Kolejne plany powstaną p
 | Plan | Zakres (spec §11) |
 |------|-------------------|
 | **01 (ten)** | 1. szkielet i CI · 2. model domenowy · 3. wtyczka zapisu i repozytorium danych |
-| 02 | 4. drzewo: prototyp układu → **punkt kontrolny z autorem** → pełna wizualizacja |
-| 03 | 5. edytor i karta osoby (w tym zdjęcia w UI) |
+| 02 | 4. drzewo: prototyp układu → **punkt kontrolny z autorem** → pełna wizualizacja: zakończony (faza 4) |
+| 03 | 5. edytor i karta osoby (w tym zdjęcia w UI): zakończony (faza 5) |
 | 04 | 6. wyszukiwarka i „Do sprawdzenia” |
 | 05 | 7. wygląd: glassmorphism, motywy, ekran powitalny |
 
