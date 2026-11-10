@@ -27,12 +27,15 @@ const relations = computed(() => (family.data ? relationCount(family.data, props
 
 const open = ref(false)
 
-// The photo file goes first: if it cannot be deleted the person stays and the error is shown here,
-// because after the person is gone the panel (and this dialog) closes.
+// Data first: a failed delete must never leave a person pointing at a removed photo file.
 async function confirm() {
   const id = props.personId
-  if (person.value?.photo && !(await photos.discard(id))) return
-  if (run((draft) => deletePerson(draft, id), { immediate: true }) !== undefined) open.value = false
+  const hadPhoto = person.value?.photo !== undefined
+  if (run((draft) => deletePerson(draft, id), { immediate: true }) === undefined) return
+  open.value = false
+  if (hadPhoto && !(await photos.discard(id))) {
+    console.error(`Nie udało się usunąć pliku zdjęcia osoby ${id}.`, photos.errorFor(id))
+  }
 }
 </script>
 
@@ -47,15 +50,12 @@ async function confirm() {
         <AlertDialogDescription>
           Zostanie usuniętych relacji: {{ relations }}.
         </AlertDialogDescription>
-        <p v-if="photos.errorFor(personId)" role="alert" class="text-sm text-destructive">
-          {{ photos.errorFor(personId) }}
-        </p>
+        <p v-if="error" role="alert" class="text-sm text-destructive">{{ error }}</p>
         <div class="flex justify-end gap-2">
           <AlertDialogCancel>Anuluj</AlertDialogCancel>
           <Button type="button" @click="confirm">Usuń</Button>
         </div>
       </AlertDialogContent>
     </AlertDialog>
-    <p v-if="error" role="alert" class="mt-2 text-sm text-destructive">{{ error }}</p>
   </div>
 </template>

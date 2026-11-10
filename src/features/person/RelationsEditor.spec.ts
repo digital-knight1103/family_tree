@@ -75,6 +75,18 @@ describe('RelationsEditor', () => {
     expect((row.get('select').element as HTMLSelectElement).value).toBe('adoptive')
   })
 
+  it('nieudana zmiana typu związku przywraca select do zapisanego typu', async () => {
+    const family = setup(withThreeParents())
+    const wrapper = mountEditor()
+    family.update = () => {
+      throw new Error('Zapis zablokowany.')
+    }
+    const select = wrapper.get('[data-testid="union-row"] select')
+    await select.setValue('partnership')
+    expect(wrapper.get('[role="alert"]').text()).toBe('Zapis zablokowany.')
+    expect((select.element as HTMLSelectElement).value).toBe('marriage')
+  })
+
   it('zmiana typu relacji zapisuje z immediate', async () => {
     const family = setup(withThreeParents())
     const wrapper = mountEditor()

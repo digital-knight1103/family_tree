@@ -90,14 +90,48 @@ describe('DeletePersonDialog', () => {
     expect(repository.deletePhoto).toHaveBeenCalledWith('p_a')
   })
 
-  it('nieudane usunięcie pliku: osoba zostaje, komunikat jest w oknie, a inny PhotoField go nie pokazuje', async () => {
+  it('nieudane usunięcie osoby: bez deletePhoto, okno otwarte, komunikat w oknie', async () => {
+    const family = setup(data())
+    family.update = () => {
+      throw new Error('Dane zmieniły się w innej karcie, odśwież')
+    }
+    await open()
+    button('Usuń').click()
+    await flushPromises()
+    expect(repository.deletePhoto).not.toHaveBeenCalled()
+    const content = document.body.querySelector('[role="alertdialog"]')!
+    expect(content.textContent).toContain('Dane zmieniły się w innej karcie, odśwież')
+    expect(family.data!.persons).toHaveLength(3)
+  })
+
+  it('dane są usuwane przed plikiem zdjęcia', async () => {
+    const family = setup(data())
+    const order: string[] = []
+    const update = family.update
+    family.update = (mutator, opts) => {
+      order.push('update')
+      update(mutator, opts)
+    }
+    repository.deletePhoto.mockImplementation(() => {
+      order.push('deletePhoto')
+      return Promise.resolve()
+    })
+    await open()
+    button('Usuń').click()
+    await flushPromises()
+    expect(order).toEqual(['update', 'deletePhoto'])
+  })
+
+  it('nieudane usunięcie pliku po usunięciu osoby: console.error, osoba usunięta', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     repository.deletePhoto.mockRejectedValue(new Error('Nie udało się usunąć zdjęcia.'))
     const family = setup(data())
     await open()
     button('Usuń').click()
     await flushPromises()
-    expect(family.data!.persons).toHaveLength(3)
-    expect(body()).toContain('Nie udało się usunąć zdjęcia.')
+    expect(family.data!.persons.map((p) => p.id)).toEqual(['p_b', 'p_c'])
+    expect(spy).toHaveBeenCalledTimes(1)
+    spy.mockRestore()
     const other = mount(PhotoField, { props: { personId: 'p_b' } })
     expect(other.text()).not.toContain('Nie udało się usunąć zdjęcia.')
   })
