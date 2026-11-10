@@ -104,3 +104,19 @@ test('Wyśrodkuj na mnie centruje osobę Ja także przy otwartym panelu', async 
     })
     .toBeLessThanOrEqual(40)
 })
+
+test('karta osoby pokazuje relacje, a klik w rodzica przechodzi do niego', async ({ page }) => {
+  resetDataDir('seed-copy')
+  await openTree(page)
+  await page.locator(PIOTR).click()
+  const card = page.getByTestId('person-card')
+  await expect(card).toContainText('Piotr Kowalczyk')
+  await expect(card).toContainText('Katarzyna Kowalczyk')
+  await expect(card).toContainText('związek')
+  await card.getByRole('button', { name: /Andrzej Kowalczyk/ }).click()
+  await expect(card.getByRole('heading', { name: 'Andrzej Kowalczyk' })).toBeVisible()
+  await expect(page.locator('[data-person-id="p_andrzej_kowalczyk"]')).toHaveAttribute(
+    'data-selected',
+    'true',
+  )
+})
