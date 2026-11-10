@@ -2,13 +2,16 @@
 import SidePanel from '@/app/SidePanel.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { AddPersonForm } from '@/features/editor'
 import { TreeCanvas } from '@/features/tree'
 import DemoBanner from '@/shared/components/DemoBanner.vue'
 import EmptyTreeState from '@/shared/components/EmptyTreeState.vue'
 import InvalidDataScreen from '@/shared/components/InvalidDataScreen.vue'
 import { useFamilyStore } from '@/stores/family'
+import { usePanelStore } from '@/stores/panel'
 
 const store = useFamilyStore()
+const panel = usePanelStore()
 </script>
 
 <template>
@@ -39,10 +42,12 @@ const store = useFamilyStore()
   </section>
   <template v-else-if="store.status === 'ready' && store.data">
     <DemoBanner v-if="store.source === 'demo'" @start="store.startOwnTree()" />
-    <EmptyTreeState v-if="store.data.persons.length === 0" />
+    <EmptyTreeState v-if="store.data.persons.length === 0">
+      <AddPersonForm v-if="store.canEdit" mode="first" />
+    </EmptyTreeState>
     <div v-else class="flex min-h-0 flex-1">
       <div class="min-w-0 flex-1">
-        <TreeCanvas :data="store.data" />
+        <TreeCanvas :data="store.data" :editable="store.canEdit" @add="panel.openAdd" />
       </div>
       <SidePanel />
     </div>

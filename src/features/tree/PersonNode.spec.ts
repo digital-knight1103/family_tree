@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PersonNode from './PersonNode.vue'
 import type { PersonNodeView } from './person-node-view'
@@ -15,13 +15,19 @@ const view: PersonNodeView = {
 }
 
 function mountNode(
-  props: { view?: Partial<PersonNodeView>; photoUrl?: string; selected?: boolean } = {},
+  props: {
+    view?: Partial<PersonNodeView>
+    photoUrl?: string
+    selected?: boolean
+    editable?: boolean
+  } = {},
 ) {
   return mount(PersonNode, {
     props: {
       view: { ...view, ...props.view },
       photoUrl: props.photoUrl,
       selected: props.selected ?? false,
+      editable: props.editable,
     },
   })
 }
@@ -71,5 +77,36 @@ describe('PersonNode', () => {
     expect(root.attributes('data-selected')).toBe('true')
     expect(root.attributes('data-sex')).toBe('female')
     expect(mountNode().get('[data-testid="person-node"]').attributes('data-selected')).toBe('false')
+  })
+
+  describe('przyciski „+”', () => {
+    const labels = ['Dodaj rodzica', 'Dodaj partnera', 'Dodaj dziecko', 'Dodaj rodzeństwo']
+
+    it('są cztery przy zaznaczeniu i editable', () => {
+      const wrapper = mountNode({ selected: true, editable: true })
+      const buttons = wrapper.findAll('button[aria-label^="Dodaj"]')
+      expect(buttons.map((b) => b.attributes('aria-label'))).toEqual(labels)
+      for (const b of buttons)
+        expect(b.classes()).toEqual(expect.arrayContaining(['nodrag', 'nopan']))
+    })
+
+    it('brak ich bez editable albo bez zaznaczenia', () => {
+      expect(mountNode({ selected: true }).findAll('button')).toHaveLength(0)
+      expect(mountNode({ selected: true, editable: false }).findAll('button')).toHaveLength(0)
+      expect(mountNode({ editable: true }).findAll('button')).toHaveLength(0)
+    })
+
+    it('klik emituje add z rodzajem i nie dociera do rodzica', async () => {
+      const onParentClick = vi.fn()
+      const wrapper = mount(PersonNode, {
+        props: { view, selected: true, editable: true },
+        attachTo: document.body,
+      })
+      wrapper.element.parentElement?.addEventListener('click', onParentClick)
+      for (const b of wrapper.findAll('button[aria-label^="Dodaj"]')) await b.trigger('click')
+      expect(wrapper.emitted('add')).toEqual([['parent'], ['partner'], ['child'], ['sibling']])
+      expect(onParentClick).not.toHaveBeenCalled()
+      wrapper.unmount()
+    })
   })
 })

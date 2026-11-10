@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { getRepository } from '@/data'
+import { AddPersonForm } from '@/features/editor'
 import { PersonCard, personCardView } from '@/features/person'
 import { useFamilyStore } from '@/stores/family'
 import { usePanelStore } from '@/stores/panel'
@@ -39,6 +40,14 @@ const photoUrl = computed(() =>
       :can-edit="family.canEdit"
       @select="selection.focus"
       @edit="panel.openEdit(card.personId)"
+    />
+    <AddPersonForm
+      v-else-if="panel.view.kind === 'add'"
+      :key="panel.view.anchorId + panel.view.relation"
+      mode="relative"
+      :anchor-id="panel.view.anchorId"
+      :relation="panel.view.relation"
+      @cancel="panel.showCard()"
     />
   </aside>
 </template>

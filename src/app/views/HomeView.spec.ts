@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { emptyFamilyData } from '@/domain/schema'
@@ -9,11 +9,19 @@ function mountView() {
   const store = useFamilyStore()
   const load = vi.spyOn(store, 'load').mockResolvedValue()
   const startOwnTree = vi.spyOn(store, 'startOwnTree').mockResolvedValue()
-  return { store, load, startOwnTree, wrapper: mount(HomeView) }
+  return {
+    store,
+    load,
+    startOwnTree,
+    wrapper: mount(HomeView, { attachTo: document.body, global: { stubs: { TreeCanvas: true } } }),
+  }
 }
 
 describe('HomeView', () => {
   beforeEach(() => setActivePinia(createPinia()))
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
 
   it('pokazuje spinner podczas ładowania', () => {
     const { wrapper } = mountView()
@@ -52,5 +60,36 @@ describe('HomeView', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('Twoje drzewo jest puste')
     expect(wrapper.find('[data-testid="demo-banner"]').exists()).toBe(false)
+  })
+
+  it('własne puste drzewo: formularz pierwszej osoby ustawia „To jestem ja”', async () => {
+    const { store, wrapper } = mountView()
+    store.status = 'ready'
+    store.source = 'user'
+    store.data = emptyFamilyData()
+    store.update = (mutator) => {
+      const draft = structuredClone(store.data!)
+      mutator(draft)
+      store.data = draft
+    }
+    await flushPromises()
+    expect(wrapper.text()).toContain('Dodaj pierwszą osobę')
+    await wrapper.get('input[name="givenNames"]').setValue('Piotr')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Dodaj')!
+      .trigger('click')
+    const [created] = store.data.persons
+    expect(created?.givenNames).toBe('Piotr')
+    expect(store.data.settings.selfPersonId).toBe(created?.id)
+  })
+
+  it('demo z pustymi danymi: bez formularza pierwszej osoby', async () => {
+    const { store, wrapper } = mountView()
+    store.status = 'ready'
+    store.source = 'demo'
+    store.data = emptyFamilyData()
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('Dodaj pierwszą osobę')
   })
 })

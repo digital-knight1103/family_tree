@@ -6,6 +6,7 @@ import { MiniMap } from '@vue-flow/minimap'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
 import { getRepository } from '@/data'
+import type { RelativeKind } from '@/domain/family-edits'
 import type { FamilyData } from '@/domain/schema'
 import { useSelectionStore } from '@/stores/selection'
 import ElkEdge from './ElkEdge.vue'
@@ -16,7 +17,8 @@ import { toFlow } from './to-flow'
 import { useTreeLayout } from './useTreeLayout'
 import { useTreeNavigation } from './useTreeNavigation'
 
-const props = defineProps<{ data: FamilyData }>()
+const props = defineProps<{ data: FamilyData; editable?: boolean }>()
+defineEmits<{ add: [anchorId: string, kind: RelativeKind] }>()
 
 const nodeTypes = { union: markRaw(UnionNode) }
 const edgeTypes = { elk: markRaw(ElkEdge) }
@@ -94,6 +96,8 @@ watch(
           :view="nodeData.view"
           :photo-url="nodeData.photoUrl"
           :selected="nodeData.view.personId === selection.selectedPersonId"
+          :editable="editable"
+          @add="(kind) => $emit('add', nodeData.view.personId, kind)"
         />
       </template>
       <MiniMap position="bottom-right" pannable zoomable />
