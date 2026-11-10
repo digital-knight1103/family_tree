@@ -20,7 +20,7 @@ Plan 01 zakończony. Fazy 1–3 scalone do `main` przez PR #1–#3 (squash), ozn
 
 **Dalej:**
 1. Autor zakłada prywatne repo danych `family_tree-data` i klonuje je do `data/family/` (instrukcja w README, sekcja „Twoje dane”; `.gitignore` repo danych: `.backups/` i `*.tmp`).
-2. Plan 02 (drzewo, spec §11 pkt 4): najpierw napisać go (brainstorming → plan), z punktem kontrolnym układu drzewa z autorem. Praca na `main`.
+2. Plan 02 (drzewo, spec §11 pkt 4): zakończony (faza 4, tag `faza-4`).
 
 **Odłożone na kolejne plany:** ścieżka folderu danych widoczna na ekranie demo (literówka w `FAMILY_DATA_DIR`), limit ~64 KB dla zapisu `keepalive`, 20 kopii ≈ 20 ostatnich autozapisów, identyfikatory osób małymi literami (kolizje nazw zdjęć na NTFS), mocniejszy `check:leaks` (porównanie z seed).
 

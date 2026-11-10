@@ -21,14 +21,14 @@ Drzewo Rodzinne: prywatna, lokalna aplikacja (Vue 3 + TypeScript) do budowania i
 - `src/domain/tree-layout/`: układ drzewa (pokolenia, graf, elkjs)
 - `src/data/`: dostęp do danych (`repository.ts`; HTTP w dev, statyczny seed w buildzie) i kolejka zapisów
 - `src/features/<x>/`: funkcje (drzewo, osoba, edytor, wyszukiwarka, do sprawdzenia)
+- `src/features/tree/`: drzewo (płótno Vue Flow, węzeł osoby, nawigacja)
 - `src/stores/`: store rodziny (Pinia); dane zmienia się wyłącznie przez `update(...)`
+- `src/stores/selection.ts`: zaznaczona osoba
 - `src/components/ui/` (shadcn-vue), `src/shared/`, `src/styles/`
 - `tests/e2e/`: testy Playwright; `tests/fixtures/`: dane i pomocniki testowe (alias `@tests/`)
 - `data/seed/`: wymyślona rodzina demo; `data/family/`: prawdziwe dane (ignorowane)
 - `vite-plugins/`: wtyczka danych tylko dla `pnpm dev` (endpointy `/__data`, zapis atomowy, kopie w `.backups/`, rewizje)
 - `scripts/`, `docs/{specs,plans,decisions}/`
-
-Folder `src/features/` powstaje w kolejnych planach.
 
 ## Konwencje
 
