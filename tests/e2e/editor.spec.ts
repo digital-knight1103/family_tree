@@ -99,3 +99,23 @@ test('istniejąca osoba: potomek jako rodzic jest wyłączony z komunikatem', as
   await expect(item).toBeDisabled()
   await expect(item).toContainText('Osoba nie może być swoim własnym przodkiem.')
 })
+
+test('edycja: data urodzenia z podglądem trafia na kartę i do pliku', async ({ page }) => {
+  resetDataDir('seed-copy')
+  await page.goto('/')
+  await page.locator(PIOTR).click()
+  await page.getByRole('button', { name: 'Edytuj' }).click()
+  await page.getByLabel('Data urodzenia').fill('ok. 1890')
+  await expect(page.getByTestId('date-preview').first()).toHaveText('ok. 1890')
+  await page.getByRole('button', { name: 'Gotowe' }).click()
+  await expect(page.getByTestId('person-card')).toContainText('ok. 1890')
+
+  await expect
+    .poll(() => {
+      const data = JSON.parse(fs.readFileSync(FAMILY_FILE, 'utf8')) as {
+        persons: Array<{ id: string; birth?: { date?: unknown } }>
+      }
+      return data.persons.find((p) => p.id === 'p_piotr_kowalczyk')?.birth?.date
+    })
+    .toEqual({ year: 1890, qualifier: 'about' })
+})

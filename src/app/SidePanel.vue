@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { getRepository } from '@/data'
 import { AddPersonForm } from '@/features/editor'
-import { PersonCard, personCardView } from '@/features/person'
+import { PersonCard, PersonEditForm, personCardView } from '@/features/person'
 import { useFamilyStore } from '@/stores/family'
 import { usePanelStore } from '@/stores/panel'
 import { useSelectionStore } from '@/stores/selection'
@@ -14,8 +14,11 @@ const selection = useSelectionStore()
 
 const card = computed(() => {
   const view = panel.view
-  if (view.kind !== 'card' || !family.data) return null
-  return personCardView(family.data, view.personId)
+  if (!family.data) return null
+  if (view.kind === 'card' || (view.kind === 'edit' && !family.canEdit)) {
+    return personCardView(family.data, view.personId)
+  }
+  return null
 })
 
 const photoUrl = computed(() =>
@@ -40,6 +43,12 @@ const photoUrl = computed(() =>
       :can-edit="family.canEdit"
       @select="selection.focus"
       @edit="panel.openEdit(card.personId)"
+    />
+    <PersonEditForm
+      v-else-if="panel.view.kind === 'edit'"
+      :key="panel.view.personId"
+      :person-id="panel.view.personId"
+      @done="panel.showCard()"
     />
     <AddPersonForm
       v-else-if="panel.view.kind === 'add'"
