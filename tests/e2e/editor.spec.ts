@@ -154,3 +154,46 @@ test('zdjęcie: dodanie, zapis jako WebP i usunięcie', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Dodaj zdjęcie' })).toBeVisible()
   await expect.poll(() => fs.existsSync(photoFile)).toBe(false)
 })
+
+function personIds(): string[] {
+  const data = JSON.parse(fs.readFileSync(FAMILY_FILE, 'utf8')) as {
+    persons: Array<{ id: string }>
+  }
+  return data.persons.map((p) => p.id)
+}
+
+test('usuwanie osoby: okno z nazwą i liczbą relacji, „Usuń” usuwa osobę i zamyka panel', async ({
+  page,
+}) => {
+  resetDataDir('seed-copy')
+  await page.goto('/')
+  await expect(page.getByTestId('person-node')).toHaveCount(20)
+  await page.locator(PIOTR).click()
+  await page.getByRole('button', { name: 'Edytuj' }).click()
+  await page.getByRole('button', { name: 'Usuń osobę' }).click()
+
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog).toContainText('Usunąć Piotr Kowalczyk?')
+  await expect(dialog).toContainText(/Zostanie usuniętych relacji: \d+\./)
+  await dialog.getByRole('button', { name: 'Usuń', exact: true }).click()
+
+  await expect(page.getByTestId('person-node')).toHaveCount(19)
+  await expect(page.locator(PIOTR)).toHaveCount(0)
+  await expect(page.getByTestId('person-edit-form')).toHaveCount(0)
+  await expect(page.getByTestId('person-card')).toHaveCount(0)
+  await expect.poll(() => personIds().includes('p_piotr_kowalczyk')).toBe(false)
+})
+
+test('usuwanie osoby: „Anuluj” zostawia wszystko bez zmian', async ({ page }) => {
+  resetDataDir('seed-copy')
+  await page.goto('/')
+  await page.locator(PIOTR).click()
+  await page.getByRole('button', { name: 'Edytuj' }).click()
+  await page.getByRole('button', { name: 'Usuń osobę' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Anuluj' }).click()
+
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+  await expect(page.getByTestId('person-node')).toHaveCount(20)
+  await expect(page.getByTestId('person-edit-form')).toBeVisible()
+  expect(personIds()).toContain('p_piotr_kowalczyk')
+})

@@ -79,4 +79,50 @@ describe('usePhotoStore', () => {
     expect(repository.deletePhoto).toHaveBeenCalledWith('p_a')
     expect(photos.error).toBeNull()
   })
+
+  it('wersja rośnie zaraz po uploadzie, także gdy zapis danych się nie powiedzie', async () => {
+    repository.uploadPhoto.mockResolvedValue('p_a.webp')
+    const family = setup(buildFamily({ persons: [{ id: 'p_a', photo: 'p_a.webp' }] }))
+    family.update = () => {
+      throw new Error('Zapis nie powiódł się.')
+    }
+    const photos = usePhotoStore()
+    const before = photos.urlFor(family.data!.persons[0]!)
+    await photos.upload('p_a', new File(['x'], 'a.png', { type: 'image/png' }))
+    expect(photos.urlFor(family.data!.persons[0]!)).not.toBe(before)
+    expect(photos.error).toBe('Zapis nie powiódł się.')
+  })
+
+  it('upload i remove czyszczą poprzedni błąd na początku', async () => {
+    repository.uploadPhoto.mockRejectedValueOnce(new Error('Błąd 1'))
+    setup(buildFamily({ persons: [{ id: 'p_a', photo: 'p_a.webp' }] }))
+    const photos = usePhotoStore()
+    await photos.upload('p_a', new File(['x'], 'a.png', { type: 'image/png' }))
+    expect(photos.error).toBe('Błąd 1')
+    let seen: string | null = 'unset'
+    repository.uploadPhoto.mockImplementationOnce(() => {
+      seen = photos.error
+      return 'p_a.webp'
+    })
+    await photos.upload('p_a', new File(['x'], 'a.png', { type: 'image/png' }))
+    expect(seen).toBeNull()
+
+    repository.uploadPhoto.mockRejectedValueOnce(new Error('Błąd 2'))
+    await photos.upload('p_a', new File(['x'], 'a.png', { type: 'image/png' }))
+    let seenOnRemove: string | null = 'unset'
+    repository.deletePhoto.mockImplementationOnce(() => {
+      seenOnRemove = photos.error
+    })
+    await photos.remove('p_a')
+    expect(seenOnRemove).toBeNull()
+  })
+
+  it('discard woła deletePhoto i zgłasza błąd', async () => {
+    repository.deletePhoto.mockRejectedValueOnce(new Error('Nie udało się usunąć zdjęcia.'))
+    setup(buildFamily({ persons: [{ id: 'p_a' }] }))
+    const photos = usePhotoStore()
+    await photos.discard('p_a')
+    expect(repository.deletePhoto).toHaveBeenCalledWith('p_a')
+    expect(photos.error).toBe('Nie udało się usunąć zdjęcia.')
+  })
 })

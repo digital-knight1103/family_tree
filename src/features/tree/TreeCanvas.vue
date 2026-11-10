@@ -23,12 +23,12 @@ defineEmits<{ add: [anchorId: string, kind: RelativeKind] }>()
 const nodeTypes = { union: markRaw(UnionNode) }
 const edgeTypes = { elk: markRaw(ElkEdge) }
 
+const photos = usePhotoStore()
 const { layout, error } = useTreeLayout(toRef(props, 'data'))
 const flow = computed(() =>
   layout.value ? toFlow(layout.value, props.data, photos.urlFor) : { nodes: [], edges: [] },
 )
 
-const photos = usePhotoStore()
 const selection = useSelectionStore()
 const { centerOnPerson, fitAll } = useTreeNavigation()
 const { nodes, dimensions, onNodesInitialized, onNodeClick, onPaneClick } = useVueFlow(FLOW_ID)

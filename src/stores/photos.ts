@@ -24,27 +24,37 @@ export const usePhotoStore = defineStore('photos', () => {
   }
 
   async function upload(personId: string, file: File): Promise<void> {
+    error.value = null
     try {
       const photo = await getRepository().uploadPhoto(personId, file)
-      family.update((draft) => updatePerson(draft, personId, { photo }), { immediate: true })
+      // The file is already replaced on disk, so the cached image is stale even if the update below fails.
       versions[personId] = (versions[personId] ?? 0) + 1
-      error.value = null
+      family.update((draft) => updatePerson(draft, personId, { photo }), { immediate: true })
+    } catch (e) {
+      error.value = messageOf(e)
+    }
+  }
+
+  async function discard(personId: string): Promise<void> {
+    try {
+      await getRepository().deletePhoto(personId)
     } catch (e) {
       error.value = messageOf(e)
     }
   }
 
   async function remove(personId: string): Promise<void> {
+    error.value = null
     try {
       family.update((draft) => updatePerson(draft, personId, { photo: undefined }), {
         immediate: true,
       })
-      await getRepository().deletePhoto(personId)
-      error.value = null
     } catch (e) {
       error.value = messageOf(e)
+      return
     }
+    await discard(personId)
   }
 
-  return { error, urlFor, upload, remove }
+  return { error, urlFor, upload, remove, discard }
 })

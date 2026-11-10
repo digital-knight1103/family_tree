@@ -18,7 +18,9 @@ import type { Fact, Person, Sex } from '@/domain/schema'
 import { useFamilyEdit } from '@/shared/composables/useFamilyEdit'
 import { useFamilyStore } from '@/stores/family'
 import DateField from './DateField.vue'
+import DeletePersonDialog from './DeletePersonDialog.vue'
 import PhotoField from './PhotoField.vue'
+import RelationsEditor from './RelationsEditor.vue'
 
 const props = defineProps<{ personId: string }>()
 const emit = defineEmits<{ done: [] }>()
@@ -204,12 +206,15 @@ function markSelf() {
       />
     </div>
 
+    <RelationsEditor :person-id="personId" />
+
     <p v-if="error" role="alert" class="text-sm text-destructive">{{ error }}</p>
 
     <div class="flex flex-wrap items-center gap-2">
       <Button type="submit">Gotowe</Button>
       <Button v-if="!isSelf" type="button" variant="outline" @click="markSelf">To jestem ja</Button>
       <span v-else class="text-sm text-muted-foreground">To Ty</span>
+      <DeletePersonDialog :person-id="personId" />
     </div>
   </form>
 </template>
