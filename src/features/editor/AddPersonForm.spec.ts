@@ -183,4 +183,121 @@ describe('AddPersonForm', () => {
     expect(wrapper.text()).toContain('Dane zmieniły się w innej karcie, odśwież')
     expect(wrapper.emitted('done')).toBeUndefined()
   })
+
+  describe('istniejąca osoba', () => {
+    async function existing(relation: Relation, anchorId = 'p_a') {
+      const wrapper = relative(relation, anchorId)
+      await button(wrapper, 'Istniejąca osoba').trigger('click')
+      return wrapper
+    }
+
+    function items(wrapper: ReturnType<typeof relative>) {
+      return wrapper.findAll('[data-testid="existing-person-item"]')
+    }
+
+    it('przełącznik chowa pola nowej osoby i pokazuje wyszukiwanie', async () => {
+      setup(buildFamily({ persons: [{ id: 'p_a' }] }))
+      const wrapper = await existing('child')
+      expect(wrapper.find('input[name="givenNames"]').exists()).toBe(false)
+      expect(wrapper.find('input[name="search"]').exists()).toBe(true)
+      await button(wrapper, 'Nowa osoba').trigger('click')
+      expect(wrapper.find('input[name="givenNames"]').exists()).toBe(true)
+    })
+
+    it('w trybie pierwszej osoby nie ma przełącznika', () => {
+      setup(buildFamily({ persons: [] }))
+      const wrapper = mount(AddPersonForm, { props: { mode: 'first' }, attachTo: document.body })
+      expect(wrapper.text()).not.toContain('Istniejąca osoba')
+    })
+
+    it('rodzic, który jest wnukiem kotwicy, jest wyłączony z komunikatem', async () => {
+      setup(
+        buildFamily({
+          persons: [
+            { id: 'p_a', givenNames: 'Adam' },
+            { id: 'p_d', givenNames: 'Dorota' },
+            { id: 'p_w', givenNames: 'Wiktor' },
+          ],
+          parentChild: [
+            ['p_a', 'p_d'],
+            ['p_d', 'p_w'],
+          ],
+        }),
+      )
+      const wrapper = await existing('parent')
+      await wrapper.get('input[name="search"]').setValue('wiktor')
+      const [item] = items(wrapper)
+      expect(item!.attributes('disabled')).toBeDefined()
+      expect(item!.text()).toContain('Osoba nie może być swoim własnym przodkiem.')
+    })
+
+    it('wybór poprawnej osoby tworzy relację bez nowej osoby i ustawia focus', async () => {
+      const family = setup(
+        buildFamily({
+          persons: [
+            { id: 'p_a', givenNames: 'Adam' },
+            { id: 'p_x', givenNames: 'Zofia', surname: 'Wiśniewska' },
+          ],
+        }),
+      )
+      const wrapper = await existing('parent')
+      expect(items(wrapper)).toHaveLength(0)
+      expect(button(wrapper, 'Dodaj').attributes('disabled')).toBeDefined()
+      await wrapper.get('input[name="search"]').setValue('wisniew')
+      expect(items(wrapper)).toHaveLength(1)
+      await items(wrapper)[0]!.trigger('click')
+      await button(wrapper, 'Dodaj').trigger('click')
+      expect(family.data!.persons).toHaveLength(2)
+      expect(family.data!.parentChild).toEqual([
+        { parentId: 'p_x', childId: 'p_a', type: 'biological' },
+      ])
+      expect(updates).toEqual([{ immediate: true }])
+      expect(useSelectionStore().pendingFocusId).toBe('p_x')
+      expect(wrapper.emitted('done')).toEqual([['p_x']])
+    })
+
+    it('kotwica nie występuje na liście, a wyników jest najwyżej 8', async () => {
+      setup(
+        buildFamily({
+          persons: Array.from({ length: 12 }, (_, i) => ({
+            id: `p_${i}`,
+            givenNames: 'Osoba',
+            surname: `Test${i}`,
+          })),
+        }),
+      )
+      const wrapper = await existing('sibling', 'p_0')
+      await wrapper.get('input[name="search"]').setValue('osoba')
+      expect(items(wrapper)).toHaveLength(8)
+      expect(wrapper.text()).not.toContain('Test0')
+    })
+
+    it('dziecko istniejące przy dwóch związkach nadal wymaga „Z kim?”', async () => {
+      const family = setup(
+        buildFamily({
+          persons: [
+            { id: 'p_a', sex: 'male' },
+            { id: 'p_k', givenNames: 'Kasia', sex: 'female' },
+            { id: 'p_l', givenNames: 'Lena', sex: 'female' },
+            { id: 'p_c', givenNames: 'Cezary' },
+          ],
+          unions: [
+            ['p_a', 'p_k'],
+            ['p_a', 'p_l'],
+          ],
+        }),
+      )
+      const wrapper = await existing('child')
+      await wrapper.get('input[name="search"]').setValue('cezary')
+      await items(wrapper)[0]!.trigger('click')
+      expect(wrapper.text()).toContain('Z kim?')
+      expect(button(wrapper, 'Dodaj').attributes('disabled')).toBeDefined()
+      await wrapper.get('[role="radio"][value="u_2"]').trigger('click')
+      await button(wrapper, 'Dodaj').trigger('click')
+      expect(family.data!.persons).toHaveLength(4)
+      expect(
+        family.data!.parentChild.filter((pc) => pc.childId === 'p_c').map((pc) => pc.parentId),
+      ).toEqual(expect.arrayContaining(['p_a', 'p_l']))
+    })
+  })
 })

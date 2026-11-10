@@ -12,7 +12,9 @@ import {
   type CoParent,
   type NewPersonInput,
   type RelativeKind,
+  type RelativeTarget,
 } from '@/domain/family-edits'
+import { matchesQuery } from '@/domain/person-search'
 import { unionsOf } from '@/domain/relations'
 import type { Sex } from '@/domain/schema'
 import { personNodeView } from '@/features/tree'
@@ -42,12 +44,14 @@ const family = useFamilyStore()
 const selection = useSelectionStore()
 const { run, error } = useFamilyEdit()
 
-const anchorId = props.mode === 'relative' ? props.anchorId : undefined
-const relation = props.mode === 'relative' ? props.relation : undefined
+const MAX_RESULTS = 8
+
+const anchorId = computed(() => (props.mode === 'relative' ? props.anchorId : undefined))
+const relation = computed(() => (props.mode === 'relative' ? props.relation : undefined))
 
 function defaultSex(): Sex {
-  if (relation !== 'partner') return 'unknown'
-  const anchorSex = family.data?.persons.find((p) => p.id === anchorId)?.sex
+  if (relation.value !== 'partner') return 'unknown'
+  const anchorSex = family.data?.persons.find((p) => p.id === anchorId.value)?.sex
   if (anchorSex === 'male') return 'female'
   if (anchorSex === 'female') return 'male'
   return 'unknown'
@@ -60,25 +64,27 @@ const sex = ref<Sex>(defaultSex())
 const maidenRevealed = ref(false)
 const isSelf = ref(true)
 const coParentChoice = ref('')
+const linkExisting = ref(false)
+const query = ref('')
+const selectedId = ref<string | null>(null)
 
-const title = computed(() => (relation ? TITLES[relation] : 'Dodaj pierwszą osobę'))
+const title = computed(() => (relation.value ? TITLES[relation.value] : 'Dodaj pierwszą osobę'))
 const showMaiden = computed(() => maidenRevealed.value || sex.value === 'female')
 
 const choiceNeeded = computed(
   () =>
-    relation === 'child' &&
-    anchorId !== undefined &&
+    relation.value === 'child' &&
+    anchorId.value !== undefined &&
     family.data !== null &&
-    needsCoParentChoice(family.data, anchorId),
+    needsCoParentChoice(family.data, anchorId.value),
 )
 
 const coParentOptions = computed(() => {
   const data = family.data
-  if (!choiceNeeded.value || !data || !anchorId) return []
-  return unionsOf(data, anchorId).flatMap((union) => {
-    const partner = data.persons.find(
-      (p) => p.id === union.partnerIds.find((id) => id !== anchorId),
-    )
+  const anchor = anchorId.value
+  if (!choiceNeeded.value || !data || !anchor) return []
+  return unionsOf(data, anchor).flatMap((union) => {
+    const partner = data.persons.find((p) => p.id === union.partnerIds.find((id) => id !== anchor))
     return partner ? [{ unionId: union.id, name: personNodeView(partner).displayName }] : []
   })
 })
@@ -90,14 +96,43 @@ const coParent = computed<CoParent | undefined>(() => {
     : { kind: 'union', unionId: coParentChoice.value }
 })
 
-const rule = computed(() => {
-  if (!family.data || !anchorId || !relation) return { ok: true as const }
-  return canAddRelative(family.data, anchorId, relation, undefined, coParent.value)
+function ruleFor(target?: RelativeTarget) {
+  if (!family.data || !anchorId.value || !relation.value) return { ok: true as const }
+  return canAddRelative(family.data, anchorId.value, relation.value, target, coParent.value)
+}
+
+const target = computed<RelativeTarget | undefined>(() =>
+  linkExisting.value && selectedId.value !== null
+    ? { kind: 'existing', personId: selectedId.value }
+    : undefined,
+)
+
+const rule = computed(() => ruleFor(target.value))
+
+const candidates = computed(() => {
+  const data = family.data
+  if (!linkExisting.value || !data || query.value.trim() === '') return []
+  return data.persons
+    .filter((p) => p.id !== anchorId.value && matchesQuery(p, query.value))
+    .slice(0, MAX_RESULTS)
+    .map((person) => {
+      const view = personNodeView(person)
+      const result = ruleFor({ kind: 'existing', personId: person.id })
+      return {
+        id: person.id,
+        name: view.displayName,
+        lifeSpan: view.lifeSpan,
+        reason: result.ok ? null : result.reason,
+      }
+    })
 })
 
 const blockedReason = computed(() => (rule.value.ok ? null : rule.value.reason))
 const canSubmit = computed(
-  () => rule.value.ok && (!choiceNeeded.value || coParentChoice.value !== ''),
+  () =>
+    rule.value.ok &&
+    (!choiceNeeded.value || coParentChoice.value !== '') &&
+    (!linkExisting.value || selectedId.value !== null),
 )
 
 function input(): NewPersonInput {
@@ -115,16 +150,13 @@ function input(): NewPersonInput {
 function submit() {
   if (!canSubmit.value) return
   const person = input()
+  const anchor = anchorId.value
+  const kind = relation.value
+  const chosen = target.value ?? { kind: 'new' as const, person }
   const newId = run(
     (draft) =>
-      anchorId && relation
-        ? addRelative(
-            draft,
-            anchorId,
-            relation,
-            { kind: 'new', person },
-            { coParent: coParent.value },
-          )
+      anchor && kind
+        ? addRelative(draft, anchor, kind, chosen, { coParent: coParent.value })
         : addPerson(draft, person, { self: isSelf.value }),
     { immediate: true },
   )
@@ -138,32 +170,80 @@ function submit() {
   <form data-testid="add-person-form" class="space-y-4" @submit.prevent="submit">
     <h2 class="text-lg font-semibold">{{ title }}</h2>
 
-    <div class="space-y-1.5">
-      <Label for="add-given-names">Imiona</Label>
-      <Input id="add-given-names" v-model="givenNames" name="givenNames" autocomplete="off" />
-    </div>
-    <div class="space-y-1.5">
-      <Label for="add-surname">Nazwisko</Label>
-      <Input id="add-surname" v-model="surname" name="surname" autocomplete="off" />
+    <div v-if="mode === 'relative'" class="flex gap-2">
+      <Button
+        type="button"
+        size="sm"
+        :variant="linkExisting ? 'outline' : 'default'"
+        :aria-pressed="!linkExisting"
+        @click="linkExisting = false"
+      >
+        Nowa osoba
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        :variant="linkExisting ? 'default' : 'outline'"
+        :aria-pressed="linkExisting"
+        @click="linkExisting = true"
+      >
+        Istniejąca osoba
+      </Button>
     </div>
 
-    <fieldset class="space-y-1.5">
-      <legend class="text-sm font-medium">Płeć</legend>
-      <RadioGroup v-model="sex" orientation="horizontal" class="flex flex-wrap gap-4">
-        <div v-for="option in SEX_OPTIONS" :key="option.value" class="flex items-center gap-2">
-          <RadioGroupItem :id="`add-sex-${option.value}`" :value="option.value" />
-          <Label :for="`add-sex-${option.value}`" class="font-normal">{{ option.label }}</Label>
-        </div>
-      </RadioGroup>
-    </fieldset>
-
-    <div v-if="showMaiden" class="space-y-1.5">
-      <Label for="add-maiden-name">Nazwisko rodowe</Label>
-      <Input id="add-maiden-name" v-model="maidenName" name="maidenName" autocomplete="off" />
+    <div v-if="linkExisting" class="space-y-1.5">
+      <Label for="add-search">Szukaj osoby</Label>
+      <Input id="add-search" v-model="query" name="search" autocomplete="off" />
+      <ul class="space-y-1">
+        <li v-for="candidate in candidates" :key="candidate.id">
+          <button
+            type="button"
+            data-testid="existing-person-item"
+            :disabled="candidate.reason !== null"
+            :aria-pressed="selectedId === candidate.id"
+            class="w-full rounded-md border px-3 py-2 text-left text-sm disabled:opacity-60 aria-pressed:border-primary aria-pressed:bg-accent"
+            @click="selectedId = candidate.id"
+          >
+            <span class="font-medium">{{ candidate.name }}</span>
+            <span v-if="candidate.lifeSpan" class="ml-2 text-muted-foreground">
+              {{ candidate.lifeSpan }}
+            </span>
+            <span v-if="candidate.reason" class="block text-destructive">
+              {{ candidate.reason }}
+            </span>
+          </button>
+        </li>
+      </ul>
     </div>
-    <Button v-else type="button" variant="ghost" size="sm" @click="maidenRevealed = true">
-      + nazwisko rodowe
-    </Button>
+
+    <template v-else>
+      <div class="space-y-1.5">
+        <Label for="add-given-names">Imiona</Label>
+        <Input id="add-given-names" v-model="givenNames" name="givenNames" autocomplete="off" />
+      </div>
+      <div class="space-y-1.5">
+        <Label for="add-surname">Nazwisko</Label>
+        <Input id="add-surname" v-model="surname" name="surname" autocomplete="off" />
+      </div>
+
+      <fieldset class="space-y-1.5">
+        <legend class="text-sm font-medium">Płeć</legend>
+        <RadioGroup v-model="sex" orientation="horizontal" class="flex flex-wrap gap-4">
+          <div v-for="option in SEX_OPTIONS" :key="option.value" class="flex items-center gap-2">
+            <RadioGroupItem :id="`add-sex-${option.value}`" :value="option.value" />
+            <Label :for="`add-sex-${option.value}`" class="font-normal">{{ option.label }}</Label>
+          </div>
+        </RadioGroup>
+      </fieldset>
+
+      <div v-if="showMaiden" class="space-y-1.5">
+        <Label for="add-maiden-name">Nazwisko rodowe</Label>
+        <Input id="add-maiden-name" v-model="maidenName" name="maidenName" autocomplete="off" />
+      </div>
+      <Button v-else type="button" variant="ghost" size="sm" @click="maidenRevealed = true">
+        + nazwisko rodowe
+      </Button>
+    </template>
 
     <fieldset v-if="choiceNeeded" class="space-y-1.5">
       <legend class="text-sm font-medium">Z kim?</legend>

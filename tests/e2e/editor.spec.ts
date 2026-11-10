@@ -87,3 +87,15 @@ test('własne puste drzewo: pierwsza osoba jako „Ja”', async ({ page }) => {
     })
     .toBe(true)
 })
+
+test('istniejąca osoba: potomek jako rodzic jest wyłączony z komunikatem', async ({ page }) => {
+  resetDataDir('seed-copy')
+  await page.goto('/')
+  await page.locator(PIOTR).click()
+  await page.getByRole('button', { name: 'Dodaj rodzica' }).click()
+  await page.getByRole('button', { name: 'Istniejąca osoba' }).click()
+  await page.getByLabel('Szukaj osoby').fill('Aleks')
+  const item = page.getByTestId('existing-person-item').filter({ hasText: 'Aleksandra' })
+  await expect(item).toBeDisabled()
+  await expect(item).toContainText('Osoba nie może być swoim własnym przodkiem.')
+})
