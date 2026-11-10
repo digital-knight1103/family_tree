@@ -5,7 +5,7 @@ import {
   type CanResult,
 } from './relation-rules.ts'
 import { unionsOf } from './relations.ts'
-import type { FamilyData, ParentChild, Person, Sex } from './schema.ts'
+import type { EndFact, FamilyData, Fact, ParentChild, Person, Sex, Union } from './schema.ts'
 
 export type IdSource = () => string
 
@@ -28,6 +28,10 @@ export interface AddRelativeOptions {
 
 export const CO_PARENT_CHOICE_MESSAGE = 'Wybierz drugiego rodzica.'
 export const UNKNOWN_UNION_MESSAGE = 'Wybrany związek nie należy do tej osoby.'
+
+export const MISSING_RELATION_MESSAGE = 'Wskazana relacja nie istnieje.'
+export const MISSING_UNION_MESSAGE = 'Wskazany związek nie istnieje.'
+const TOO_MANY_BIOLOGICAL_MESSAGE = 'Osoba może mieć najwyżej dwoje rodziców biologicznych.'
 
 const ID_LENGTH = 10
 const ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -197,6 +201,7 @@ export function canAddRelative(
   const effective =
     coParent ?? (needsCoParentChoice(data, anchorId) ? { kind: 'none' as const } : undefined)
   try {
+    // Scratch copy only: the helpers append and never reorder (addRelative relies on this).
     applyRelative(scratchCopy(data), anchorId, kind, target, effective)
     return { ok: true }
   } catch (error) {
@@ -213,8 +218,133 @@ export function addRelative(
 ): string {
   const work = scratchCopy(draft)
   const id = applyRelative(work, anchorId, kind, target, opts.coParent, opts.source)
+  // The scratch helpers only append, so entries past the draft's lengths are exactly the new ones.
   draft.persons.push(...work.persons.slice(draft.persons.length))
   draft.parentChild.push(...work.parentChild.slice(draft.parentChild.length))
   draft.unions.push(...work.unions.slice(draft.unions.length))
   return id
+}
+
+export type PersonPatch = Partial<Omit<Person, 'id' | 'birth' | 'death'>>
+export type FactKey = 'birth' | 'death'
+
+const CLEARED_WHEN_EMPTY = new Set<string>(['maidenName', 'bio', 'researchNotes'])
+
+function findPerson(draft: FamilyData, personId: string): Person {
+  const person = draft.persons.find((p) => p.id === personId)
+  if (person === undefined) fail(MISSING_PERSON_MESSAGE)
+  return person
+}
+
+function findUnion(draft: FamilyData, unionId: string): Union {
+  const union = draft.unions.find((u) => u.id === unionId)
+  if (union === undefined) fail(MISSING_UNION_MESSAGE)
+  return union
+}
+
+export function updatePerson(draft: FamilyData, personId: string, patch: PersonPatch): void {
+  const person = findPerson(draft, personId)
+  const target = person as unknown as Record<string, unknown>
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined || (value === '' && CLEARED_WHEN_EMPTY.has(key))) delete target[key]
+    else target[key] = value
+  }
+}
+
+// Merges a patch into a fact; undefined, an empty place and unconfirmed=false drop the key.
+function mergeFact<T extends Fact>(current: T | undefined, patch: Partial<T>): T | undefined {
+  const next: Record<string, unknown> = { ...current }
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined || value === '' || value === false) delete next[key]
+    else next[key] = value
+  }
+  return Object.keys(next).length === 0 ? undefined : (next as T)
+}
+
+function assignOptional<T extends object, K extends keyof T>(
+  holder: T,
+  key: K,
+  value: T[K] | undefined,
+) {
+  if (value === undefined) delete holder[key]
+  else holder[key] = value
+}
+
+export function updateFact(
+  draft: FamilyData,
+  personId: string,
+  key: FactKey,
+  patch: Partial<Fact>,
+): void {
+  const person = findPerson(draft, personId)
+  assignOptional(person, key, mergeFact(person[key], patch))
+}
+
+export function setSelf(draft: FamilyData, personId: string | undefined): void {
+  if (personId === undefined) {
+    delete draft.settings.selfPersonId
+    return
+  }
+  findPerson(draft, personId)
+  draft.settings.selfPersonId = personId
+}
+
+function findEdge(draft: FamilyData, parentId: string, childId: string): ParentChild {
+  const edge = draft.parentChild.find((r) => r.parentId === parentId && r.childId === childId)
+  if (edge === undefined) fail(MISSING_RELATION_MESSAGE)
+  return edge
+}
+
+export function setParentChildType(
+  draft: FamilyData,
+  parentId: string,
+  childId: string,
+  type: ParentChild['type'],
+): void {
+  const edge = findEdge(draft, parentId, childId)
+  if (type === 'biological' && edge.type !== 'biological') {
+    const count = draft.parentChild.filter(
+      (r) => r.childId === childId && r.type === 'biological',
+    ).length
+    if (count >= 2) fail(TOO_MANY_BIOLOGICAL_MESSAGE)
+  }
+  edge.type = type
+}
+
+export function removeParentChild(draft: FamilyData, parentId: string, childId: string): void {
+  const edge = findEdge(draft, parentId, childId)
+  draft.parentChild.splice(draft.parentChild.indexOf(edge), 1)
+}
+
+export function updateUnion(
+  draft: FamilyData,
+  unionId: string,
+  patch: { type?: Union['type']; start?: Partial<Fact>; end?: Partial<EndFact> },
+): void {
+  const union = findUnion(draft, unionId)
+  if (patch.type !== undefined) union.type = patch.type
+  if (patch.start !== undefined) assignOptional(union, 'start', mergeFact(union.start, patch.start))
+  if (patch.end !== undefined) assignOptional(union, 'end', mergeFact(union.end, patch.end))
+}
+
+export function removeUnion(draft: FamilyData, unionId: string): void {
+  const union = findUnion(draft, unionId)
+  draft.unions.splice(draft.unions.indexOf(union), 1)
+}
+
+export function relationCount(data: FamilyData, personId: string): number {
+  const edges = data.parentChild.filter((r) => r.parentId === personId || r.childId === personId)
+  return edges.length + data.unions.filter((u) => u.partnerIds.includes(personId)).length
+}
+
+export function deletePerson(draft: FamilyData, personId: string): { photo?: string } {
+  const person = findPerson(draft, personId)
+  const photo = person.photo
+  draft.persons.splice(draft.persons.indexOf(person), 1)
+  draft.parentChild = draft.parentChild.filter(
+    (r) => r.parentId !== personId && r.childId !== personId,
+  )
+  draft.unions = draft.unions.filter((u) => !u.partnerIds.includes(personId))
+  if (draft.settings.selfPersonId === personId) delete draft.settings.selfPersonId
+  return photo === undefined ? {} : { photo }
 }

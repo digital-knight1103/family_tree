@@ -5,11 +5,21 @@ import {
   addRelative,
   canAddRelative,
   createId,
+  deletePerson,
+  relationCount,
+  removeParentChild,
+  removeUnion,
+  setParentChildType,
+  setSelf,
+  updateFact,
+  updatePerson,
+  updateUnion,
   needsCoParentChoice,
   type IdSource,
   type NewPersonInput,
 } from './family-edits'
 import { checkRelationRules } from './relation-rules'
+import { validateFamilyData } from './validate'
 
 const counterSource = (): IdSource => {
   let n = 0
@@ -272,5 +282,219 @@ describe('invalid targets', () => {
     expect(addRelative(draft, 'p_a', 'child', { kind: 'existing', personId: 'p_b' })).toBe('p_b')
     expect(draft.persons).toHaveLength(2)
     expect(draft.parentChild).toEqual([{ parentId: 'p_a', childId: 'p_b', type: 'biological' }])
+  })
+})
+
+describe('failing addRelative leaves the draft untouched', () => {
+  it('when the second parent link of an existing child fails', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_d' }, { id: 'p_x' }, { id: 'p_y' }],
+      parentChild: [
+        ['p_x', 'p_d'],
+        ['p_y', 'p_d'],
+      ],
+      unions: [['p_a', 'p_b']],
+    })
+    const before = structuredClone(data)
+    expect(() => addRelative(data, 'p_a', 'child', { kind: 'existing', personId: 'p_d' })).toThrow(
+      TOO_MANY,
+    )
+    expect(data).toEqual(before)
+  })
+
+  it('when the first link succeeds and the second fails', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_d' }, { id: 'p_x' }],
+      parentChild: [['p_x', 'p_d']],
+      unions: [['p_a', 'p_b']],
+    })
+    data.parentChild.push({ parentId: 'p_b', childId: 'p_d', type: 'adoptive' })
+    const before = structuredClone(data)
+    expect(() => addRelative(data, 'p_a', 'child', { kind: 'existing', personId: 'p_d' })).toThrow(
+      'Ta relacja rodzic–dziecko już istnieje.',
+    )
+    expect(data).toEqual(before)
+  })
+
+  it('when an existing sibling would exceed two biological parents', () => {
+    const data = buildFamily({
+      persons: [
+        { id: 'p_a' },
+        { id: 'p_b' },
+        { id: 'p_c' },
+        { id: 'p_s' },
+        { id: 'p_x' },
+        { id: 'p_y' },
+      ],
+      parentChild: [
+        ['p_b', 'p_a'],
+        ['p_c', 'p_a'],
+        ['p_x', 'p_s'],
+        ['p_y', 'p_s'],
+      ],
+    })
+    const before = structuredClone(data)
+    expect(() =>
+      addRelative(data, 'p_a', 'sibling', { kind: 'existing', personId: 'p_s' }),
+    ).toThrow(TOO_MANY)
+    expect(data).toEqual(before)
+  })
+})
+
+describe('updatePerson', () => {
+  it('sets fields and removes keys for undefined and empty text', () => {
+    const draft = buildFamily({
+      persons: [{ id: 'p_a', maidenName: 'Kowalska', bio: 'Opis', researchNotes: 'Notatka' }],
+    })
+    updatePerson(draft, 'p_a', { givenNames: 'Anna', living: true, maidenName: '', bio: undefined })
+    expect(draft.persons[0]).toEqual({
+      id: 'p_a',
+      givenNames: 'Anna',
+      surname: 'Test',
+      sex: 'unknown',
+      living: true,
+      researchNotes: 'Notatka',
+    })
+    expect(validateFamilyData(draft).ok).toBe(true)
+  })
+
+  it('rejects a missing person', () => {
+    const draft = buildFamily({ persons: [] })
+    expect(() => updatePerson(draft, 'p_x', { givenNames: 'A' })).toThrow(
+      'Wskazana osoba nie istnieje.',
+    )
+  })
+})
+
+describe('updateFact', () => {
+  it('sets date, place and unconfirmed, then clears the fact', () => {
+    const draft = buildFamily({ persons: [{ id: 'p_a' }] })
+    updateFact(draft, 'p_a', 'birth', { date: { year: 1950, month: 3 }, place: 'Kraków' })
+    updateFact(draft, 'p_a', 'birth', { unconfirmed: true })
+    expect(draft.persons[0]!.birth).toEqual({
+      date: { year: 1950, month: 3 },
+      place: 'Kraków',
+      unconfirmed: true,
+    })
+    expect(validateFamilyData(draft).ok).toBe(true)
+
+    updateFact(draft, 'p_a', 'birth', { date: undefined, place: '', unconfirmed: false })
+    expect('birth' in draft.persons[0]!).toBe(false)
+    expect(validateFamilyData(draft).ok).toBe(true)
+  })
+
+  it('rejects a missing person', () => {
+    const draft = buildFamily({ persons: [] })
+    expect(() => updateFact(draft, 'p_x', 'death', { place: 'X' })).toThrow(
+      'Wskazana osoba nie istnieje.',
+    )
+  })
+})
+
+describe('setSelf', () => {
+  it('sets and clears the self person', () => {
+    const draft = buildFamily({ persons: [{ id: 'p_a' }] })
+    setSelf(draft, 'p_a')
+    expect(draft.settings.selfPersonId).toBe('p_a')
+    setSelf(draft, undefined)
+    expect('selfPersonId' in draft.settings).toBe(false)
+    expect(() => setSelf(draft, 'p_x')).toThrow('Wskazana osoba nie istnieje.')
+  })
+})
+
+describe('parent-child edits', () => {
+  it('refuses a third biological parent and leaves the draft untouched', () => {
+    const draft = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_c' }, { id: 'p_d' }],
+      parentChild: [
+        ['p_b', 'p_a'],
+        ['p_c', 'p_a'],
+        ['p_d', 'p_a', 'adoptive'],
+      ],
+    })
+    const before = structuredClone(draft)
+    expect(() => setParentChildType(draft, 'p_d', 'p_a', 'biological')).toThrow(TOO_MANY)
+    expect(draft).toEqual(before)
+  })
+
+  it('changes the type and removes a relation', () => {
+    const draft = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }],
+      parentChild: [['p_b', 'p_a']],
+    })
+    setParentChildType(draft, 'p_b', 'p_a', 'adoptive')
+    expect(draft.parentChild).toEqual([{ parentId: 'p_b', childId: 'p_a', type: 'adoptive' }])
+    setParentChildType(draft, 'p_b', 'p_a', 'biological')
+    expect(draft.parentChild[0]!.type).toBe('biological')
+    removeParentChild(draft, 'p_b', 'p_a')
+    expect(draft.parentChild).toEqual([])
+    expect(() => removeParentChild(draft, 'p_b', 'p_a')).toThrow('Wskazana relacja nie istnieje.')
+    expect(() => setParentChildType(draft, 'p_b', 'p_a', 'biological')).toThrow(
+      'Wskazana relacja nie istnieje.',
+    )
+    expect(validateFamilyData(draft).ok).toBe(true)
+  })
+})
+
+describe('unions', () => {
+  it('updates type and dates, and drops an empty start', () => {
+    const draft = buildFamily({ persons: [{ id: 'p_a' }, { id: 'p_b' }], unions: [['p_a', 'p_b']] })
+    updateUnion(draft, 'u_1', {
+      type: 'partnership',
+      start: { date: { year: 2000 }, place: 'Łódź' },
+      end: { date: { year: 2010 } },
+    })
+    expect(draft.unions[0]).toMatchObject({
+      type: 'partnership',
+      start: { date: { year: 2000 }, place: 'Łódź' },
+      end: { date: { year: 2010 } },
+    })
+    updateUnion(draft, 'u_1', { start: { date: undefined, place: '' }, end: { date: undefined } })
+    expect('start' in draft.unions[0]!).toBe(false)
+    expect('end' in draft.unions[0]!).toBe(false)
+    expect(validateFamilyData(draft).ok).toBe(true)
+  })
+
+  it('removes a union and rejects a missing one', () => {
+    const draft = buildFamily({ persons: [{ id: 'p_a' }, { id: 'p_b' }], unions: [['p_a', 'p_b']] })
+    expect(() => updateUnion(draft, 'u_9', { type: 'partnership' })).toThrow(
+      'Wskazany związek nie istnieje.',
+    )
+    removeUnion(draft, 'u_1')
+    expect(draft.unions).toEqual([])
+    expect(() => removeUnion(draft, 'u_1')).toThrow('Wskazany związek nie istnieje.')
+  })
+})
+
+describe('deletePerson', () => {
+  it('removes the person with relations and the self setting, returning the photo', () => {
+    const draft = buildFamily({
+      persons: [{ id: 'p_me', photo: 'p_me.webp' }, { id: 'p_w' }, { id: 'p_k1' }, { id: 'p_k2' }],
+      parentChild: [
+        ['p_me', 'p_k1'],
+        ['p_w', 'p_k1'],
+        ['p_me', 'p_k2'],
+        ['p_w', 'p_k2'],
+      ],
+      unions: [['p_me', 'p_w']],
+    })
+    draft.settings.selfPersonId = 'p_me'
+    expect(relationCount(draft, 'p_me')).toBe(3)
+
+    expect(deletePerson(draft, 'p_me')).toEqual({ photo: 'p_me.webp' })
+    expect(draft.persons.map((p) => p.id)).toEqual(['p_w', 'p_k1', 'p_k2'])
+    expect(draft.parentChild).toEqual([
+      { parentId: 'p_w', childId: 'p_k1', type: 'biological' },
+      { parentId: 'p_w', childId: 'p_k2', type: 'biological' },
+    ])
+    expect(draft.unions).toEqual([])
+    expect('selfPersonId' in draft.settings).toBe(false)
+    expect(validateFamilyData(draft).ok).toBe(true)
+  })
+
+  it('returns no photo when there is none and rejects a missing person', () => {
+    const draft = buildFamily({ persons: [{ id: 'p_a' }] })
+    expect(deletePerson(draft, 'p_a')).toEqual({})
+    expect(() => deletePerson(draft, 'p_a')).toThrow('Wskazana osoba nie istnieje.')
   })
 })
