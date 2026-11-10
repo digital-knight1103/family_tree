@@ -1,0 +1,220 @@
+import {
+  canAddParent,
+  canAddUnion,
+  MISSING_PERSON_MESSAGE,
+  type CanResult,
+} from './relation-rules.ts'
+import { unionsOf } from './relations.ts'
+import type { FamilyData, ParentChild, Person, Sex } from './schema.ts'
+
+export type IdSource = () => string
+
+export interface NewPersonInput {
+  givenNames: string
+  surname: string
+  maidenName?: string
+  sex: Sex
+}
+
+export type RelativeKind = 'parent' | 'partner' | 'child' | 'sibling'
+export type RelativeTarget =
+  { kind: 'new'; person: NewPersonInput } | { kind: 'existing'; personId: string }
+export type CoParent = { kind: 'union'; unionId: string } | { kind: 'none' }
+
+export interface AddRelativeOptions {
+  coParent?: CoParent
+  source?: IdSource
+}
+
+export const CO_PARENT_CHOICE_MESSAGE = 'Wybierz drugiego rodzica.'
+export const UNKNOWN_UNION_MESSAGE = 'Wybrany związek nie należy do tej osoby.'
+
+const ID_LENGTH = 10
+const ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
+const UNKNOWN_PERSON: NewPersonInput = { givenNames: '', surname: '', sex: 'unknown' }
+
+const randomSource: IdSource = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(ID_LENGTH))
+  return Array.from(bytes, (b) => ID_ALPHABET[b % ID_ALPHABET.length]).join('')
+}
+
+export function createId(
+  prefix: 'p' | 'u',
+  taken: Set<string>,
+  source: IdSource = randomSource,
+): string {
+  let id = `${prefix}_${source()}`
+  while (taken.has(id)) id = `${prefix}_${source()}`
+  taken.add(id)
+  return id
+}
+
+function takenIds(data: FamilyData): Set<string> {
+  return new Set([...data.persons.map((p) => p.id), ...data.unions.map((u) => u.id)])
+}
+
+function makePerson(id: string, input: NewPersonInput, living = false): Person {
+  const person: Person = {
+    id,
+    givenNames: input.givenNames,
+    surname: input.surname,
+    sex: input.sex,
+    living,
+  }
+  if (input.maidenName !== undefined && input.maidenName.trim() !== '') {
+    person.maidenName = input.maidenName
+  }
+  return person
+}
+
+export function addPerson(
+  draft: FamilyData,
+  person: NewPersonInput,
+  opts: { self?: boolean; source?: IdSource } = {},
+): string {
+  const id = createId('p', takenIds(draft), opts.source)
+  draft.persons.push(makePerson(id, person, opts.self === true))
+  if (opts.self === true) draft.settings.selfPersonId = id
+  return id
+}
+
+export function needsCoParentChoice(data: FamilyData, anchorId: string): boolean {
+  return unionsOf(data, anchorId).length >= 2
+}
+
+function fail(reason: string): never {
+  throw new Error(reason)
+}
+
+function ensure(result: CanResult): void {
+  if (!result.ok) fail(result.reason)
+}
+
+// Mutating steps on a scratch copy: every step checks the rules first and throws on a violation.
+function link(work: FamilyData, childId: string, parentId: string, type: ParentChild['type']) {
+  ensure(canAddParent(work, childId, parentId, type))
+  work.parentChild.push({ parentId, childId, type })
+}
+
+function join(work: FamilyData, aId: string, bId: string, taken: Set<string>, source?: IdSource) {
+  ensure(canAddUnion(work, aId, bId))
+  work.unions.push({ id: createId('u', taken, source), partnerIds: [aId, bId], type: 'marriage' })
+}
+
+function resolveTarget(
+  work: FamilyData,
+  target: RelativeTarget,
+  taken: Set<string>,
+  source?: IdSource,
+): string {
+  if (target.kind === 'existing') return target.personId
+  const id = createId('p', taken, source)
+  work.persons.push(makePerson(id, target.person))
+  return id
+}
+
+function applyParent(
+  work: FamilyData,
+  anchorId: string,
+  parentId: string,
+  taken: Set<string>,
+  source?: IdSource,
+) {
+  const existing = work.parentChild.filter((r) => r.childId === anchorId)
+  link(work, anchorId, parentId, 'biological')
+  const [only] = existing
+  if (existing.length !== 1 || only === undefined) return
+  const otherId = only.parentId
+  if (unionsOf(work, otherId).length === 0) join(work, otherId, parentId, taken, source)
+}
+
+function applyChild(
+  work: FamilyData,
+  anchorId: string,
+  childId: string,
+  coParent: CoParent | undefined,
+) {
+  const unions = unionsOf(work, anchorId)
+  let partnerIds: string[] = []
+  if (coParent?.kind === 'union') {
+    const union = unions.find((u) => u.id === coParent.unionId)
+    if (union === undefined) fail(UNKNOWN_UNION_MESSAGE)
+    partnerIds = union.partnerIds.filter((id) => id !== anchorId)
+  } else if (coParent === undefined) {
+    if (unions.length >= 2) fail(CO_PARENT_CHOICE_MESSAGE)
+    partnerIds = unions.flatMap((u) => u.partnerIds.filter((id) => id !== anchorId))
+  }
+  for (const parentId of [anchorId, ...partnerIds]) link(work, childId, parentId, 'biological')
+}
+
+function applySibling(
+  work: FamilyData,
+  anchorId: string,
+  siblingId: string,
+  taken: Set<string>,
+  source?: IdSource,
+) {
+  if (siblingId === anchorId) ensure(canAddParent(work, anchorId, anchorId, 'biological'))
+  let edges = work.parentChild.filter((r) => r.childId === anchorId).map((r) => ({ ...r }))
+  if (edges.length === 0) {
+    const parentId = resolveTarget(work, { kind: 'new', person: UNKNOWN_PERSON }, taken, source)
+    link(work, anchorId, parentId, 'biological')
+    edges = [{ parentId, childId: anchorId, type: 'biological' }]
+  }
+  for (const edge of edges) link(work, siblingId, edge.parentId, edge.type)
+}
+
+function applyRelative(
+  work: FamilyData,
+  anchorId: string,
+  kind: RelativeKind,
+  target: RelativeTarget,
+  coParent: CoParent | undefined,
+  source?: IdSource,
+): string {
+  if (!work.persons.some((p) => p.id === anchorId)) fail(MISSING_PERSON_MESSAGE)
+  const taken = takenIds(work)
+  const targetId = resolveTarget(work, target, taken, source)
+  if (kind === 'parent') applyParent(work, anchorId, targetId, taken, source)
+  else if (kind === 'partner') join(work, anchorId, targetId, taken, source)
+  else if (kind === 'child') applyChild(work, anchorId, targetId, coParent)
+  else applySibling(work, anchorId, targetId, taken, source)
+  return targetId
+}
+
+function scratchCopy(data: FamilyData): FamilyData {
+  return JSON.parse(JSON.stringify(data)) as FamilyData
+}
+
+export function canAddRelative(
+  data: FamilyData,
+  anchorId: string,
+  kind: RelativeKind,
+  target: RelativeTarget = { kind: 'new', person: UNKNOWN_PERSON },
+  coParent?: CoParent,
+): CanResult {
+  // Without a chosen co-parent the choice is still open, so the rules are checked for the anchor alone.
+  const effective =
+    coParent ?? (needsCoParentChoice(data, anchorId) ? { kind: 'none' as const } : undefined)
+  try {
+    applyRelative(scratchCopy(data), anchorId, kind, target, effective)
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, reason: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+export function addRelative(
+  draft: FamilyData,
+  anchorId: string,
+  kind: RelativeKind,
+  target: RelativeTarget,
+  opts: AddRelativeOptions = {},
+): string {
+  const work = scratchCopy(draft)
+  const id = applyRelative(work, anchorId, kind, target, opts.coParent, opts.source)
+  draft.persons.push(...work.persons.slice(draft.persons.length))
+  draft.parentChild.push(...work.parentChild.slice(draft.parentChild.length))
+  draft.unions.push(...work.unions.slice(draft.unions.length))
+  return id
+}

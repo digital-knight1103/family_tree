@@ -196,3 +196,5 @@ export function canAddUnion(data: FamilyData, aId: string, bId: string): CanResu
   }
   return { ok: true }
 }
+
+export const MISSING_PERSON_MESSAGE = MSG.missingPerson
