@@ -5,6 +5,10 @@ import { E2E_DATA_DIR, resetDataDir } from './fixtures/data-dir'
 
 const PIOTR = '[data-person-id="p_piotr_kowalczyk"]'
 const FAMILY_FILE = path.join(E2E_DATA_DIR, 'family.json')
+const PORTRAIT_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQImWM4Y2x8xtiYAUIBACPqBMlwUmUNAAAAAElFTkSuQmCC',
+  'base64',
+)
 
 test.afterEach(() => resetDataDir('seed-copy'))
 
@@ -128,9 +132,11 @@ test('zdjęcie: dodanie, zapis jako WebP i usunięcie', async ({ page }) => {
   await page.getByRole('button', { name: 'Edytuj' }).click()
   await expect(page.locator(`${PIOTR} img`)).toHaveCount(0)
 
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles(path.join(import.meta.dirname, '..', 'fixtures', 'portrait-2x2.png'))
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'portrait.png',
+    mimeType: 'image/png',
+    buffer: PORTRAIT_PNG,
+  })
   await expect(page.locator(`${PIOTR} img`)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Zmień zdjęcie' })).toBeVisible()
   await expect.poll(() => fs.existsSync(photoFile)).toBe(true)
