@@ -50,4 +50,50 @@ describe('usePanelStore', () => {
     selection.select(null)
     expect(panel.view).toEqual({ kind: 'closed' })
   })
+
+  it('openReview pokazuje listę także bez zaznaczenia', () => {
+    const panel = usePanelStore()
+    panel.openReview()
+    expect(panel.view).toEqual({ kind: 'review' })
+    useSelectionStore().select('p_1')
+    expect(panel.view).toEqual({ kind: 'card', personId: 'p_1' })
+  })
+
+  it('openCard z listy dla już zaznaczonej osoby pokazuje kartę', () => {
+    const selection = useSelectionStore()
+    selection.select('p_1')
+    const panel = usePanelStore()
+    panel.openReview()
+    panel.openCard('p_1', { fromReview: true })
+    expect(panel.view).toEqual({ kind: 'card', personId: 'p_1' })
+    expect(selection.pendingFocusId).toBe('p_1')
+    expect(panel.canReturnToReview).toBe(true)
+  })
+
+  it('powrót do listy przetrwa edycję, ale nie zmianę zaznaczenia', () => {
+    const panel = usePanelStore()
+    panel.openCard('p_1', { fromReview: true })
+    panel.openEdit('p_1')
+    expect(panel.canReturnToReview).toBe(false)
+    panel.showCard()
+    expect(panel.canReturnToReview).toBe(true)
+    useSelectionStore().select('p_2')
+    expect(panel.canReturnToReview).toBe(false)
+  })
+
+  it('openCard bez fromReview nie pozwala wrócić do listy', () => {
+    const panel = usePanelStore()
+    panel.openCard('p_1', { fromReview: true })
+    panel.openCard('p_1')
+    expect(panel.canReturnToReview).toBe(false)
+  })
+
+  it('close zamyka panel także z listy', () => {
+    const panel = usePanelStore()
+    panel.openCard('p_1')
+    panel.openReview()
+    panel.close()
+    expect(panel.view).toEqual({ kind: 'closed' })
+    expect(useSelectionStore().selectedPersonId).toBeNull()
+  })
 })

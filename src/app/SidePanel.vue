@@ -36,7 +36,7 @@ const photoUrl = computed(() => {
     class="w-[360px] shrink-0 overflow-y-auto border-l bg-background p-4"
   >
     <div class="mb-4 flex justify-end">
-      <Button variant="ghost" size="sm" @click="selection.select(null)">Zamknij</Button>
+      <Button variant="ghost" size="sm" @click="panel.close()">Zamknij</Button>
     </div>
     <PersonCard
       v-if="card"
