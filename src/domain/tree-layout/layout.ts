@@ -45,8 +45,10 @@ export interface LayoutOptions {
   personHeight?: (personId: string) => number
 }
 
-/** Room for the "+" buttons beside a node (91 px and 68 px wide, 4 px from it). */
+/** Between neighbours that are not a couple: keeps couples visibly apart from each other. */
 const NODE_SPACING = 104
+/** Between partners standing side by side: only their partner line with the union point. */
+const PARTNER_SPACING = 40
 const COMPONENT_SPACING = 2 * NODE_SPACING
 /** How much lower the partner line of each further partner of the same person runs. */
 const LEVEL_STEP = 12
@@ -145,7 +147,7 @@ export async function layoutTree(
   const personHeightOf = (nodeId: string) =>
     sizeOf(nodeId, options.personHeight, PERSON_NODE.height)
   const ordered = orderNodes(graph)
-  const placement = placeRows(graph, ordered, widthOf, NODE_SPACING)
+  const placement = placeRows(graph, ordered, widthOf, NODE_SPACING, PARTNER_SPACING)
   const centreOf = (nodeId: string) =>
     placement.personX.get(nodeId) ?? placement.unions.get(nodeId)!.x
 

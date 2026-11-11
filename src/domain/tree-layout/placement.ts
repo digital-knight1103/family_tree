@@ -42,11 +42,13 @@ interface Expression {
 }
 
 /**
- * Horizontal positions for the rows ordered by `orderNodes` (the order is kept). Partners in a
- * row stand `spacing` apart, every other neighbour at least `spacing` apart. Each family (a union
- * point or a single parent) should stand above the middle of its children: halfway between the
- * centres of the leftmost and the rightmost child, their partners not counted. Where the rows
- * leave no room for that, the sum of squared deviations is the smallest possible.
+ * Horizontal positions for the rows ordered by `orderNodes` (the order is kept). Partners side
+ * by side stand `partnerSpacing` apart, every other neighbour at least `spacing` apart (between
+ * the partners of one union, neighbours who are not a couple stand exactly `spacing` apart). Each
+ * family (a union point or a single parent) should stand above the middle of its children:
+ * halfway between the centres of the leftmost and the rightmost child, their partners not
+ * counted. Where the rows leave no room for that, the sum of squared deviations is the smallest
+ * possible.
  *
  * Partners standing next to each other form a rigid unit; the unit positions are found by
  * accelerated projected gradient descent (FISTA with restarts), the projection onto the spacing
@@ -59,6 +61,7 @@ export function placeRows(
   ordered: TreeNode[],
   widthOf: (personNodeId: string) => number,
   spacing: number,
+  partnerSpacing: number,
 ): Placement {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]))
   const rows = new Map<number, string[]>()
@@ -71,6 +74,8 @@ export function placeRows(
 
   // Unions with both partners in one row lock the gaps between them.
   const rigid = new Map<number, Set<number>>()
+  const couples = new Set<string>()
+  const couple = (a: string, b: string) => [a, b].sort().join(' ')
   const sameRow = (union: Extract<TreeNode, { kind: 'union' }>) => {
     const [a, b] = union.partnerIds.map((id) => `person:${id}`) as [string, string]
     return byId.get(a)!.generation === byId.get(b)!.generation ? ([a, b] as const) : undefined
@@ -79,6 +84,7 @@ export function placeRows(
     if (node.kind !== 'union') continue
     const partners = sameRow(node)
     if (!partners) continue
+    couples.add(couple(...partners))
     const [lo, hi] = partners.map((id) => indexInRow.get(id)!).sort((x, y) => x - y) as [
       number,
       number,
@@ -93,6 +99,8 @@ export function placeRows(
   const unitOf = new Map<string, number>()
   const offset = new Map<string, number>()
   const rowUnits: Array<{ units: number[]; gaps: number[] }> = []
+  /** The gap a locked person keeps to the one on its left. */
+  const lockedGap = new Map<string, number>()
   let unitCount = 0
   const initial: number[] = []
   for (const [generation, row] of [...rows].sort(([a], [b]) => a - b)) {
@@ -104,9 +112,11 @@ export function placeRows(
       const width = widthOf(id)
       if (i > 0 && locked.has(i - 1)) {
         const previous = row[i - 1]!
-        offset.set(id, offset.get(previous)! + (widthOf(previous) + width) / 2 + spacing)
+        const gap = couples.has(couple(previous, id)) ? partnerSpacing : spacing
+        lockedGap.set(id, gap)
+        offset.set(id, offset.get(previous)! + (widthOf(previous) + width) / 2 + gap)
         unitOf.set(id, unitOf.get(previous)!)
-        cursor += width + spacing
+        cursor += width + gap
         return
       }
       if (i > 0) {
@@ -150,7 +160,7 @@ export function placeRows(
     const expression =
       between === 0
         ? at(left, (offset.get(right)! - offset.get(left)!) / 2)
-        : at(right, -widthOf(right) / 2 - spacing / 2)
+        : at(right, -widthOf(right) / 2 - lockedGap.get(right)! / 2)
     unionPoints.set(node.id, { expression, level: between })
   }
 

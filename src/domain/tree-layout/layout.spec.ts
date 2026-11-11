@@ -469,8 +469,9 @@ describe('layoutTree (rodzice nad środkiem dzieci, szerokość węzła)', () =>
     const nodes = byId(result)
     const deviationF = Math.abs(center(nodes, 'union:u_1') - center(nodes, 'person:p_c'))
     const deviationG = Math.abs(center(nodes, 'union:u_2') - center(nodes, 'person:p_d'))
-    // Pairs of parents stand at least 608 px apart (union to union: 200 + 104 + 200 + 104), the
-    // couple 304 px (200 + 104): 152 px each.
+    // Union to union the pairs of parents stand at least 544 px apart (half a pair (200 + 40) / 2,
+    // then 200 + 104 to the other pair, then its half), the couple 240 px (200 + 40): the excess
+    // 304 px is split, 152 px each (the partner gap cancels out, so the numbers stay as with 104).
     expect(Math.abs(deviationF - 152)).toBeLessThanOrEqual(1)
     expect(Math.abs(deviationG - 152)).toBeLessThanOrEqual(1)
     noOverlaps(result)
@@ -503,6 +504,8 @@ describe('layoutTree (rodzice nad środkiem dzieci, szerokość węzła)', () =>
     })
     const result = await layout(data)
     const nodes = byId(result)
+    // The union points stand 272 px apart (40 / 2 + 200 + 104 / 2), the half-siblings below at
+    // least 304 px (200 + 104): each union point is 16 px off the middle of its child.
     for (const [unionId, partner, child] of [
       ['union:u_2', 'p_x', 'p_cx'],
       ['union:u_3', 'p_y', 'p_cy'],
@@ -510,13 +513,26 @@ describe('layoutTree (rodzice nad środkiem dzieci, szerokość węzła)', () =>
       const u = nodes.get(unionId)!
       expect(centerX(u)).toBeGreaterThan(center(nodes, 'person:p_a'))
       expect(centerX(u)).toBeLessThan(center(nodes, `person:${partner}`))
-      expect(Math.abs(centerX(u) - center(nodes, `person:${child}`))).toBeLessThanOrEqual(1)
+      const deviation = Math.abs(centerX(u) - center(nodes, `person:${child}`))
+      expect(Math.abs(deviation - 16)).toBeLessThanOrEqual(1)
       const start = result.edges.find((e) => e.source === unionId)!.points[0]!
       expect(Math.abs(start.x - centerX(u))).toBeLessThanOrEqual(0.5)
       expect(Math.abs(start.y - (u.y + u.height))).toBeLessThanOrEqual(0.5)
     }
     // The line to the second partner runs below the first union.
     expect(nodes.get('union:u_3')!.y).toBeGreaterThan(nodes.get('union:u_2')!.y)
+    // A and the first partner stand 40 px apart; the second union point sits in the gap between
+    // the two partners, who are not partners of each other: that gap keeps 104 px.
+    const [a, x, y] = ['p_a', 'p_x', 'p_y'].map((id) => nodes.get(`person:${id}`)!) as [
+      PositionedNode,
+      PositionedNode,
+      PositionedNode,
+    ]
+    expect(Math.abs(x.x - (a.x + a.width) - 40)).toBeLessThanOrEqual(0.5)
+    expect(Math.abs(y.x - (x.x + x.width) - 104)).toBeLessThanOrEqual(0.5)
+    const u3 = nodes.get('union:u_3')!
+    expect(u3.x).toBeGreaterThan(x.x + x.width)
+    expect(u3.x + u3.width).toBeLessThan(y.x)
     for (const edge of result.edges) {
       for (const [p, q] of segments(edge)) {
         expect(Math.abs(p.x - q.x) <= 0.5 || Math.abs(p.y - q.y) <= 0.5, edge.id).toBe(true)
@@ -707,7 +723,7 @@ describe('layoutTree (wysokość węzła i odstęp w rzędzie)', () => {
     expect(result.height).toBeGreaterThan(nodes.get('person:p_wnuk2')!.y + 180)
   })
 
-  it('sąsiednie węzły w rzędzie, także partnerzy, stoją co najmniej 104 px od siebie', async () => {
+  it('partnerzy obok siebie stoją 40 px od siebie, pozostali sąsiedzi co najmniej 104 px', async () => {
     const graph = buildTreeGraph(family)
     const result = await layoutTree(graph, { personWidth: wide })
     const partners = new Set(
@@ -726,17 +742,18 @@ describe('layoutTree (wysokość węzła i odstęp w rzędzie)', () => {
         const a = row[i - 1]
         if (!a) continue
         const gap = b.x - (a.x + a.width)
+        if (partners.has([a.id, b.id].sort().join(' '))) {
+          expect(Math.abs(gap - 40), `${a.id} – ${b.id}`).toBeLessThanOrEqual(0.5)
+          partnerGaps++
+          continue
+        }
         expect(gap, `${a.id} – ${b.id}`).toBeGreaterThanOrEqual(104 - 0.5)
         if (Math.abs(gap - 104) <= 0.5) tightGaps++
-        if (partners.has([a.id, b.id].sort().join(' '))) {
-          expect(Math.abs(gap - 104), `${a.id} – ${b.id}`).toBeLessThanOrEqual(0.5)
-          partnerGaps++
-        }
       }
     }
     expect(partnerGaps).toBe(3)
     // Siblings' blocks stand as close as allowed: syn + synowa, then córka + zięć.
-    expect(tightGaps).toBeGreaterThan(partnerGaps)
+    expect(tightGaps).toBeGreaterThan(0)
   })
 
   it(
