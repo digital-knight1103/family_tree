@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchesQuery, normalizeForSearch } from './person-search.ts'
+import { comparePersonsByName, matchesQuery, normalizeForSearch } from './person-search.ts'
 import type { Person } from './schema.ts'
 
 function person(givenNames: string, surname: string, maidenName?: string): Person {
@@ -34,5 +34,41 @@ describe('matchesQuery', () => {
 
   it('puste zapytanie nic nie znajduje', () => {
     expect(matchesQuery(person('Jan', 'Kowalczyk'), '  ')).toBe(false)
+  })
+})
+
+describe('comparePersonsByName', () => {
+  function named(id: string, givenNames: string, surname: string): Person {
+    return { id, givenNames, surname, sex: 'unknown', living: false }
+  }
+  const sorted = (list: Person[]) => [...list].sort(comparePersonsByName).map((p) => p.id)
+
+  it('sortuje po nazwisku, ł po l', () => {
+    const list = [
+      named('p_3', 'A', 'Mazur'),
+      named('p_2', 'A', 'Łukasik'),
+      named('p_1', 'A', 'Lis'),
+    ]
+    expect(sorted(list)).toEqual(['p_1', 'p_2', 'p_3'])
+  })
+
+  it('to samo nazwisko sortuje po imionach', () => {
+    const list = [named('p_1', 'Jan', 'Nowak'), named('p_2', 'Anna', 'Nowak')]
+    expect(sorted(list)).toEqual(['p_2', 'p_1'])
+  })
+
+  it('wielkość liter nie ma znaczenia', () => {
+    const list = [named('p_1', 'a', 'nowak'), named('p_2', 'B', 'Nowak')]
+    expect(sorted(list)).toEqual(['p_1', 'p_2'])
+  })
+
+  it('nieznana osoba jest po wszystkich', () => {
+    const list = [named('p_1', '', ''), named('p_2', 'Zofia', 'Żak')]
+    expect(sorted(list)).toEqual(['p_2', 'p_1'])
+  })
+
+  it('remis rozstrzyga id', () => {
+    const list = [named('p_2', 'Jan', 'Nowak'), named('p_1', 'Jan', 'Nowak')]
+    expect(sorted(list)).toEqual(['p_1', 'p_2'])
   })
 })
