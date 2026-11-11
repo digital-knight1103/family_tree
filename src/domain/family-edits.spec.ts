@@ -31,6 +31,7 @@ const newPerson = (givenNames: string, sex: NewPersonInput['sex'] = 'unknown') =
 
 const TOO_MANY = 'Osoba może mieć najwyżej dwoje rodziców biologicznych.'
 const SELF_PARENT = 'Osoba nie może być swoim rodzicem.'
+const DUPLICATE = 'Ta relacja rodzic–dziecko już istnieje.'
 
 describe('createId', () => {
   it('has the prefix and ten lowercase alphanumerics', () => {
@@ -144,6 +145,56 @@ describe('child', () => {
       reason: TOO_MANY,
     })
   })
+
+  it('skips the co-parent edge an existing child already has', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_d' }],
+      parentChild: [['p_b', 'p_d']],
+      unions: [['p_a', 'p_b']],
+    })
+    const existing = { kind: 'existing', personId: 'p_d' } as const
+    const coParent = { kind: 'union', unionId: 'u_1' } as const
+    expect(canAddRelative(data, 'p_a', 'child', existing, coParent)).toEqual({ ok: true })
+    addRelative(data, 'p_a', 'child', existing, { coParent })
+    expect(data.parentChild).toEqual([
+      { parentId: 'p_b', childId: 'p_d', type: 'biological' },
+      { parentId: 'p_a', childId: 'p_d', type: 'biological' },
+    ])
+    expect(checkRelationRules(data)).toEqual([])
+  })
+
+  it('keeps a non-biological co-parent edge as it is', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_d' }, { id: 'p_x' }],
+      parentChild: [
+        ['p_x', 'p_d'],
+        ['p_b', 'p_d', 'adoptive'],
+      ],
+      unions: [['p_a', 'p_b']],
+    })
+    addRelative(data, 'p_a', 'child', { kind: 'existing', personId: 'p_d' })
+    expect(data.parentChild.slice(2)).toEqual([
+      { parentId: 'p_a', childId: 'p_d', type: 'biological' },
+    ])
+    expect(data.parentChild[1]).toEqual({ parentId: 'p_b', childId: 'p_d', type: 'adoptive' })
+    expect(checkRelationRules(data)).toEqual([])
+  })
+
+  it('still refuses when the anchor edge already exists', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_d' }],
+      parentChild: [['p_a', 'p_d']],
+      unions: [['p_a', 'p_b']],
+    })
+    const before = structuredClone(data)
+    const existing = { kind: 'existing', personId: 'p_d' } as const
+    expect(canAddRelative(data, 'p_a', 'child', existing)).toEqual({
+      ok: false,
+      reason: DUPLICATE,
+    })
+    expect(() => addRelative(data, 'p_a', 'child', existing)).toThrow(DUPLICATE)
+    expect(data).toEqual(before)
+  })
 })
 
 describe('parent', () => {
@@ -252,6 +303,64 @@ describe('sibling', () => {
     ])
     expect(checkRelationRules(draft)).toEqual([])
   })
+
+  it('skips a parent an existing sibling already shares', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_c' }, { id: 'p_s' }],
+      parentChild: [
+        ['p_b', 'p_a'],
+        ['p_c', 'p_a'],
+        ['p_b', 'p_s'],
+      ],
+    })
+    const existing = { kind: 'existing', personId: 'p_s' } as const
+    expect(canAddRelative(data, 'p_a', 'sibling', existing)).toEqual({ ok: true })
+    addRelative(data, 'p_a', 'sibling', existing)
+    expect(data.parentChild.slice(3)).toEqual([
+      { parentId: 'p_c', childId: 'p_s', type: 'biological' },
+    ])
+    expect(checkRelationRules(data)).toEqual([])
+  })
+
+  it('refuses an existing sibling who already shares every parent', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_c' }, { id: 'p_s' }],
+      parentChild: [
+        ['p_b', 'p_a'],
+        ['p_c', 'p_a'],
+        ['p_b', 'p_s'],
+        ['p_c', 'p_s'],
+      ],
+    })
+    const before = structuredClone(data)
+    const existing = { kind: 'existing', personId: 'p_s' } as const
+    expect(canAddRelative(data, 'p_a', 'sibling', existing)).toEqual({
+      ok: false,
+      reason: DUPLICATE,
+    })
+    expect(() => addRelative(data, 'p_a', 'sibling', existing)).toThrow(DUPLICATE)
+    expect(data).toEqual(before)
+  })
+
+  it('refuses a shared-parent sibling who would get a third biological parent', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_c' }, { id: 'p_s' }, { id: 'p_y' }],
+      parentChild: [
+        ['p_b', 'p_a'],
+        ['p_c', 'p_a'],
+        ['p_b', 'p_s'],
+        ['p_y', 'p_s'],
+      ],
+    })
+    const before = structuredClone(data)
+    const existing = { kind: 'existing', personId: 'p_s' } as const
+    expect(canAddRelative(data, 'p_a', 'sibling', existing)).toEqual({
+      ok: false,
+      reason: TOO_MANY,
+    })
+    expect(() => addRelative(data, 'p_a', 'sibling', existing)).toThrow(TOO_MANY)
+    expect(data).toEqual(before)
+  })
 })
 
 describe('invalid targets', () => {
@@ -308,10 +417,9 @@ describe('failing addRelative leaves the draft untouched', () => {
       parentChild: [['p_x', 'p_d']],
       unions: [['p_a', 'p_b']],
     })
-    data.parentChild.push({ parentId: 'p_b', childId: 'p_d', type: 'adoptive' })
     const before = structuredClone(data)
     expect(() => addRelative(data, 'p_a', 'child', { kind: 'existing', personId: 'p_d' })).toThrow(
-      'Ta relacja rodzic–dziecko już istnieje.',
+      TOO_MANY,
     )
     expect(data).toEqual(before)
   })

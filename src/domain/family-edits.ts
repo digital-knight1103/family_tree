@@ -148,7 +148,15 @@ function applyChild(
     if (unions.length >= 2) fail(CO_PARENT_CHOICE_MESSAGE)
     partnerIds = unions.flatMap((u) => u.partnerIds.filter((id) => id !== anchorId))
   }
-  for (const parentId of [anchorId, ...partnerIds]) link(work, childId, parentId, 'biological')
+  link(work, childId, anchorId, 'biological')
+  // An existing child may already have the co-parent: that edge stays as it is.
+  for (const parentId of partnerIds) {
+    if (!hasEdge(work, parentId, childId)) link(work, childId, parentId, 'biological')
+  }
+}
+
+function hasEdge(work: FamilyData, parentId: string, childId: string): boolean {
+  return work.parentChild.some((r) => r.parentId === parentId && r.childId === childId)
 }
 
 function applySibling(
@@ -165,7 +173,12 @@ function applySibling(
     link(work, anchorId, parentId, 'biological')
     edges = [{ parentId, childId: anchorId, type: 'biological' }]
   }
-  for (const edge of edges) link(work, siblingId, edge.parentId, edge.type)
+  // Parents the sibling already shares are skipped; sharing all of them adds nothing, so linking
+  // them all again reports the duplicate relation.
+  const missing = edges.filter((e) => !hasEdge(work, e.parentId, siblingId))
+  for (const edge of missing.length > 0 ? missing : edges) {
+    link(work, siblingId, edge.parentId, edge.type)
+  }
 }
 
 function applyRelative(
