@@ -8,11 +8,11 @@
 
 ## Stan prac (2026-11-11)
 
-**Task 1–4 zrobione**, na `main`. Task 1–2 przez podagenta, recenzja: „Approved”. Czeka na ocenę autora na jego danych.
+**Task 1–4 i 6–7 zrobione**, na `main`. Task 1–2 i 6 przez podagenta, recenzje: „Approved”. Task 1–4 przyjęte przez autora; Task 6–7 czekają na jego ocenę.
 
 **Rozwiązanie:** pozycje x liczy własny `placement.ts` (minimalizacja kwadratu odchylenia punktu związku od środka dzieci, partnerzy jako sztywna para, odstęp 32 px, deterministycznie); ELK z `nodePlacement INTERACTIVE` tylko prowadzi linie. Kolory podświetlenia: rodzice fiolet, rodzeństwo zieleń, partnerzy bursztyn, dzieci turkus.
 
-**Kompromis wyśrodkowania (do pokazania autorowi):** gdy obie osoby z pary mają rodziców w drzewie, dwie pary rodziców potrzebują więcej miejsca niż para dzieci; każda strona przesuwa się wtedy na zewnątrz po równo (np. 116 px przy dwóch jedynakach). Tak samo przy szerszych sąsiednich gałęziach. Osoba z dwoma partnerami: linia do dzieci z pierwszego związku zawsze przecina niższą linię do drugiego związku.
+**Kompromis wyśrodkowania (do pokazania autorowi):** gdy obie osoby z pary mają rodziców w drzewie, dwie pary rodziców potrzebują więcej miejsca niż para dzieci; każda strona przesuwa się wtedy na zewnątrz po równo (np. 152 px przy dwóch jedynakach i odstępie 104 px). Tak samo przy szerszych sąsiednich gałęziach. Osoba z dwoma partnerami: linia do dzieci z pierwszego związku zawsze przecina niższą linię do drugiego związku.
 
 **Dług techniczny** (drobne uwagi z recenzji, `src/domain/tree-layout/`, pełny tryb):
 
@@ -20,6 +20,7 @@
 2. Dwa węzły ELK zaplanowane w tym samym x (np. zdublowany związek tej samej pary) ELK rozsuwa o 8 px; wyśrodkowanie przesuwa się o kilka pikseli. Ewentualnie test utrwalający zachowanie.
 3. `placement.ts`: słabe przyciąganie łączy też sąsiednie osobne grupy w rzędzie (efekt < 1 px); pomijać pary z różnych grup.
 4. Współrzędne niecałkowite (np. `227.9999977905`); zaokrąglać do 0,01 px.
+5. `layout.ts`: `sizeOf` typuje parametr jako `LayoutOptions['personWidth']`, choć służy też wysokości; scalić dwa komentarze o wysokości rzędu.
 
 ## Global Constraints
 
