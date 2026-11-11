@@ -61,3 +61,18 @@
 ### Task 5: Weryfikacja i pokaz
 
 - Pełna weryfikacja z CLAUDE.md (z e2e), aktualizacja „Stan prac”, serwer dev dla autora i opis kompromisu wyśrodkowania, jeśli wystąpił.
+
+### Task 6: Miejscowość urodzenia i odstęp w rzędzie (domena, podagent)
+
+Uwagi autora po obejrzeniu Task 1–4 (2026-11-11).
+
+**Files:** `src/domain/tree-layout/layout.ts`, `placement.ts`, specy obok, `index.ts`.
+
+- `layoutTree(graph, { personWidth?, personHeight? })`: wysokość węzła osoby z treści; brak albo mniej niż `PERSON_NODE.height` daje `PERSON_NODE.height`. Każdy `PositionedNode` ma swoją `height`; rzędy się nie nakładają, linie wychodzą z dolnej krawędzi węzła i kończą się na górnej krawędzi dziecka.
+- Odstęp między węzłami w rzędzie 104 px (przycisk „+ rodzeństwo” ma 91 px, „+ partner” 68 px, oba 4 px od węzła), także między partnerami.
+
+### Task 7: Linia z miejscowością urodzenia (sesja)
+
+**Files:** `src/features/tree/person-node-view.ts`, `node-width.ts`, `PersonNode.vue`, `useTreeLayout.ts`, specy obok.
+
+- Czwarta linia: ikona `MapPin` (`@lucide/vue`) i `birth.place`, mniejsza czcionka; brak miejscowości: brak linii. Szerokość liczona jak dotąd z trzech linii; miejscowość zawija się po słowach, a wysokość (z pomiaru zawinięcia) idzie do `layoutTree` przez `personHeight`.
