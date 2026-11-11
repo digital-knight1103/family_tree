@@ -12,7 +12,11 @@
 
 ## Stan prac (2026-11-11)
 
-Task 1–4 na `main` i wypchnięte. Task 1 (domena) przez podagenta z recenzją („Approved”, trzy drobne uwagi niżej), Task 2–3 w sesji. E2e zielone. Pozostało: przegląd końcowy (`git diff faza-5..HEAD`), poprawki, tag `faza-6`.
+**Plan zakończony, tag `faza-6`.** Task 1–4 na `main`. Task 1 (domena) przez podagenta z recenzją („Approved”, trzy drobne uwagi niżej), Task 2–3 w sesji. E2e zielone. Przegląd końcowy (`faza-5..HEAD`): „With fixes”. Poprawione: lista „Do sprawdzenia” zdejmuje zaznaczenie (klik węzła zawsze otwiera kartę, drzewo nie przygasa za listą); „Brak wyników” poza `listbox`; przewijanie aktywnego wyniku; licznik bez formatowania; partner partnera stoi na zewnątrz pary (`row-order.ts`, podagent z recenzją: „addressed”). Pełna weryfikacja z CLAUDE.md zielona.
+
+**Odłożone z przeglądu:** skrót `/` albo `Ctrl+K` przy otwartym oknie potwierdzenia połyka klawisz; linia od innego związku rodzica do przyrodniego rodzeństwa zostaje przygaszona przy podświetleniu; dług drzewa z planu 03a pkt 1–5 i uwaga o 80 px.
+
+**Dalej:** plan 05 (faza 7: wygląd, glassmorphism, motywy, ekran powitalny, spec §6.1 i §6.9) po „dalej” od autora: plan wprost ze specyfikacji (superpowers:writing-plans), commit i push, wykonanie w trybie z CLAUDE.md od fazy 6, na koniec przegląd `git diff faza-6..HEAD` i tag `faza-7`.
 
 **Odstępstwa i decyzje:** skróty `/` i `Ctrl+K` (oba). Kliknięcie pozycji listy otwiera kartę z przyciskiem „Wróć do listy”, zamiast zostawiać listę (karta pokazuje notatki i fakty). Pole w pasku i pole łączenia w formularzu dodawania mają tę samą etykietę „Szukaj osoby”; test e2e edytora szuka pola w panelu.
 

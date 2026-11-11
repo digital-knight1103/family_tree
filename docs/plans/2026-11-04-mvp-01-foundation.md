@@ -35,7 +35,7 @@ Ten plan obejmuje fazy 1–3 z sekcji 11 specyfikacji. Kolejne plany powstaną p
 | 03 | 5. edytor i karta osoby (w tym zdjęcia w UI): zakończony (faza 5) |
 | 03a | poprawki drzewa po testach na prawdziwych danych (`2026-11-11-tree-adjustments.md`): zakończony, bez osobnego tagu (wchodzi w fazę 6) |
 | 04 | 6. wyszukiwarka i „Do sprawdzenia” (`2026-11-11-mvp-04-search-review.md`): zakończony (faza 6) |
-| 05 | 7. wygląd: glassmorphism, motywy, ekran powitalny |
+| 05 | 7. wygląd: glassmorphism, motywy, ekran powitalny: następny; kroki startu w „Stanie prac” planu 04 |
 
 ## Global Constraints
 
