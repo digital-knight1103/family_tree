@@ -98,7 +98,7 @@ test('istniejąca osoba: potomek jako rodzic jest wyłączony z komunikatem', as
   await page.locator(PIOTR).click()
   await page.getByRole('button', { name: 'Dodaj rodzica' }).click()
   await page.getByRole('button', { name: 'Istniejąca osoba' }).click()
-  await page.getByLabel('Szukaj osoby').fill('Aleks')
+  await page.getByTestId('side-panel').getByLabel('Szukaj osoby').fill('Aleks')
   const item = page.getByTestId('existing-person-item').filter({ hasText: 'Aleksandra' })
   await expect(item).toBeDisabled()
   await expect(item).toContainText('Osoba nie może być swoim własnym przodkiem.')

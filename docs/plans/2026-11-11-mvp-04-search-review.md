@@ -12,7 +12,11 @@
 
 ## Stan prac (2026-11-11)
 
-Plan napisany, wykonanie od Task 1.
+Task 1–4 na `main` i wypchnięte. Task 1 (domena) przez podagenta z recenzją („Approved”, trzy drobne uwagi niżej), Task 2–3 w sesji. E2e zielone. Pozostało: przegląd końcowy (`git diff faza-5..HEAD`), poprawki, tag `faza-6`.
+
+**Odstępstwa i decyzje:** skróty `/` i `Ctrl+K` (oba). Kliknięcie pozycji listy otwiera kartę z przyciskiem „Wróć do listy”, zamiast zostawiać listę (karta pokazuje notatki i fakty). Pole w pasku i pole łączenia w formularzu dodawania mają tę samą etykietę „Szukaj osoby”; test e2e edytora szuka pola w panelu.
+
+**Dług techniczny** (drobne uwagi z recenzji Task 1, `src/domain/`): `reviewEntries` przegląda związki dla każdej osoby (O(osoby × związki), bez znaczenia przy rodzinie); związek z tym samym id dwa razy nie jest osobno obsłużony; zagnieżdżony operator warunkowy przy porównaniu `id` w `comparePersonsByName`.
 
 ## Global Constraints
 

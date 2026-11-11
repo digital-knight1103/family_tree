@@ -14,13 +14,7 @@
 
 **Kompromis wyśrodkowania (do pokazania autorowi):** gdy obie osoby z pary mają rodziców w drzewie, dwie pary rodziców potrzebują więcej miejsca niż para dzieci; każda strona przesuwa się wtedy na zewnątrz po równo (np. 152 px przy dwóch jedynakach i odstępie 104 px). Tak samo przy szerszych sąsiednich gałęziach. Osoba z dwoma partnerami: linia do dzieci z pierwszego związku zawsze przecina niższą linię do drugiego związku. Osoba z dwoma partnerami i dzieckiem z każdym związkiem: przy odstępach 40 i 104 px punkty związków odchylają się o 16 px od dzieci (przerwa między dwoma partnerami jest dokładnie 104 px, a przyrodnie rodzeństwo potrzebuje więcej).
 
-**Kroki na start planu 04 (faza 6: wyszukiwarka i „Do sprawdzenia”)**, po „dalej” od autora:
-
-1. Przeczytać CLAUDE.md, spec §6.7 i §6.8 oraz „Stan prac” planów 03 i tego planu.
-2. Napisać plan `docs/plans/<data>-mvp-04-search-review.md` (superpowers:writing-plans) wprost ze specyfikacji, bez rundy pytań; commit i push.
-3. Wykonywać w trybie z CLAUDE.md od fazy 6: zadania w sesji, po każdym `pnpm lint && pnpm typecheck && pnpm test`, commit i push na `main`; zadania w `src/domain/`, `src/data/`, `vite-plugins/`, `src/stores/family.ts` przez podagenta z recenzją; e2e tylko na koniec fazy.
-4. Koniec fazy: pełna weryfikacja z CLAUDE.md, przegląd końcowy świeżym podagentem na `git diff faza-5..HEAD` (obejmuje też poprawki drzewa z tego planu), poprawki, tag `faza-6` i `git push origin faza-6`, krótkie podsumowanie, czekanie na „dalej”.
-5. Dług techniczny do rozważenia przy okazji: plan 03 („Dług techniczny”, `family-edits.ts`), ten plan (niżej), plan 01 („Odłożone na kolejne plany”).
+**Plan 04** (faza 6) wykonany według zapisanych tu kroków; stan w jego „Stanie prac”. Dług techniczny do rozważenia przy okazji: plan 03 („Dług techniczny”, `family-edits.ts`), ten plan (niżej), plan 01 („Odłożone na kolejne plany”).
 
 **Dług techniczny** (drobne uwagi z recenzji, `src/domain/tree-layout/`, pełny tryb):
 

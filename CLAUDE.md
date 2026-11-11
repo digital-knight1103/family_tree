@@ -24,9 +24,10 @@ Drzewo Rodzinne: prywatna, lokalna aplikacja (Vue 3 + TypeScript) do budowania i
 - `src/features/tree/`: drzewo (płótno Vue Flow, węzeł osoby i jego rozmiar z pomiaru tekstu w `node-size.ts`, podświetlenie najbliższych w `highlight.ts`, nawigacja, przyciski „+”)
 - `src/features/person/`: karta i edycja osoby, relacje, zdjęcie, usuwanie
 - `src/features/editor/`: dodawanie krewnych, łączenie z istniejącą osobą
-- `src/app/SidePanel.vue`: panel boczny (karta, edycja, dodawanie)
+- `src/features/search/`: wyszukiwarka w pasku (`/`, `Ctrl+K`); `src/features/research/`: lista „Do sprawdzenia” (powody z `src/domain/review.ts`)
+- `src/app/SidePanel.vue`: panel boczny (karta, edycja, dodawanie, lista „Do sprawdzenia”)
 - `src/stores/`: store rodziny (Pinia); dane zmienia się wyłącznie przez `update(...)`
-- `src/stores/selection.ts`: zaznaczona osoba i oczekujące wyśrodkowanie; `src/stores/panel.ts`: widok panelu; `src/stores/photos.ts`: adresy, upload i usuwanie zdjęć
+- `src/stores/selection.ts`: zaznaczona osoba i oczekujące wyśrodkowanie; `src/stores/panel.ts`: widok panelu (`openCard`, `openReview`, powrót do listy); `src/stores/photos.ts`: adresy, upload i usuwanie zdjęć
 - `src/components/ui/` (shadcn-vue; CLI tu nie działa, komponenty dopisywane ręcznie we wzorze reka-nova), `src/shared/`, `src/styles/`
 - `tests/e2e/`: testy Playwright; `tests/fixtures/`: dane i pomocniki testowe (alias `@tests/`)
 - `data/seed/`: wymyślona rodzina demo; `data/family/`: prawdziwe dane (ignorowane)
