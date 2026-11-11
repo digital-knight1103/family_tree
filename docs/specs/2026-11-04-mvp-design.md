@@ -186,10 +186,10 @@ Układ według zaakceptowanego szkicu:
 ### 6.3 Węzeł osoby
 - Okrągła miniatura zdjęcia (bez zdjęcia: inicjały). Pierwsza linia: imiona; druga: nazwisko, z „z d. <nazwisko rodowe>”, jeśli jest; trzecia: daty życia w krótkim formacie, np. „12.03.1990 – 05.11.2020”, z niepełnymi datami i kwalifikatorami bez zmian („ok. 1890”, „03.1921”). Tekst nigdy nie jest obcinany: węzeł jest szerszy, gdy treść tego wymaga (zmiana z 2026-11-11, wcześniej imię i nazwisko w jednej linii i same lata).
 - Pod datami czwarta linia: miejscowość urodzenia, mniejszą czcionką, z małą ikoną pinezki. Gdy miejscowości brak, linii nie ma. Długa nazwa zawija się w szerokości węzła (nie poszerza go i nie jest obcinana), a węzeł jest wtedy wyższy.
-- Odstęp między węzłami w rzędzie jest na tyle duży, że przyciski „+” zaznaczonej osoby (z boków) nie zachodzą na sąsiednie węzły.
+- Partnerzy stoją blisko siebie (odstęp 40 px), żeby para wyglądała jak para; odstęp między pozostałymi sąsiednimi węzłami w rzędzie jest wyraźnie większy (104 px).
 - Kolorowy akcent oznacza płeć (np. pasek z lewej). Plakietka „?” pojawia się, gdy którykolwiek fakt osoby ma `unconfirmed`.
 - Osoba nieznana (brak imion i nazwiska): przerywana ramka, wyszarzenie, etykieta „Nieznany” / „Nieznana” / „Osoba nieznana” zależnie od płci.
-- Zaznaczona osoba ma wyraźny obrys. Wokół niej pojawiają się przyciski „+” z etykietami: **rodzic** (nad), **partner** (z boku), **dziecko** (pod), **rodzeństwo** (z boku, po drugiej stronie niż partner).
+- Zaznaczona osoba ma wyraźny obrys. Nad nią i pod nią (nigdy z boków, żeby nie zasłaniać partnera) pojawiają się przyciski „+” z etykietami: nad węzłem **rodzeństwo** i **rodzic**, pod węzłem **dziecko** i **partner**.
 - Po zaznaczeniu osoby jej najbliżsi dostają delikatne tło, w osobnym odcieniu dla każdej grupy: rodzice, rodzeństwo, partnerzy, dzieci. Reszta drzewa lekko przygasa. Bez zaznaczenia drzewo wygląda zwyczajnie.
 
 ### 6.4 Układ drzewa (auto-layout)

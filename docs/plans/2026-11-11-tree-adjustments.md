@@ -77,3 +77,7 @@ Uwagi autora po obejrzeniu Task 1–4 (2026-11-11).
 **Files:** `src/features/tree/person-node-view.ts`, `node-width.ts`, `PersonNode.vue`, `useTreeLayout.ts`, specy obok.
 
 - Czwarta linia: ikona `MapPin` (`@lucide/vue`) i `birth.place`, mniejsza czcionka; brak miejscowości: brak linii. Szerokość liczona jak dotąd z trzech linii; miejscowość zawija się po słowach, a wysokość (z pomiaru zawinięcia) idzie do `layoutTree` przez `personHeight`.
+
+### Task 8: Para bliżej i przyciski „+” nad i pod węzłem
+
+Uwagi autora (2026-11-11). Odstęp między partnerami 40 px (domena, podagent; pozostałe sąsiednie węzły 104 px). Przyciski „+” w sesji: nad węzłem „rodzeństwo” i „rodzic”, pod węzłem „dziecko” i „partner”, nigdy z boków.

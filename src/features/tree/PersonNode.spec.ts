@@ -125,7 +125,7 @@ describe('PersonNode', () => {
   })
 
   describe('przyciski „+”', () => {
-    const labels = ['Dodaj rodzica', 'Dodaj partnera', 'Dodaj dziecko', 'Dodaj rodzeństwo']
+    const labels = ['Dodaj rodzeństwo', 'Dodaj rodzica', 'Dodaj dziecko', 'Dodaj partnera']
 
     it('są cztery przy zaznaczeniu i editable', () => {
       const wrapper = mountNode({ selected: true, editable: true })
@@ -133,6 +133,19 @@ describe('PersonNode', () => {
       expect(buttons.map((b) => b.attributes('aria-label'))).toEqual(labels)
       for (const b of buttons)
         expect(b.classes()).toEqual(expect.arrayContaining(['nodrag', 'nopan']))
+    })
+
+    it('rodzeństwo i rodzic są nad węzłem, dziecko i partner pod nim, nigdy z boku', () => {
+      const wrapper = mountNode({ selected: true, editable: true })
+      const above = wrapper.get('[data-testid="add-above"]')
+      const below = wrapper.get('[data-testid="add-below"]')
+      const labelsIn = (row: typeof above) =>
+        row.findAll('button').map((b) => b.attributes('aria-label'))
+      expect(labelsIn(above)).toEqual(['Dodaj rodzeństwo', 'Dodaj rodzica'])
+      expect(labelsIn(below)).toEqual(['Dodaj dziecko', 'Dodaj partnera'])
+      expect(above.classes()).toContain('bottom-full')
+      expect(below.classes()).toContain('top-full')
+      expect(wrapper.html()).not.toMatch(/left-full|right-full/)
     })
 
     it('brak ich bez editable albo bez zaznaczenia', () => {
@@ -149,7 +162,7 @@ describe('PersonNode', () => {
       })
       wrapper.element.parentElement?.addEventListener('click', onParentClick)
       for (const b of wrapper.findAll('button[aria-label^="Dodaj"]')) await b.trigger('click')
-      expect(wrapper.emitted('add')).toEqual([['parent'], ['partner'], ['child'], ['sibling']])
+      expect(wrapper.emitted('add')).toEqual([['sibling'], ['parent'], ['child'], ['partner']])
       expect(onParentClick).not.toHaveBeenCalled()
       wrapper.unmount()
     })

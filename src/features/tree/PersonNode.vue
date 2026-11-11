@@ -40,30 +40,32 @@ const background = computed(() => {
   return props.view.unknown ? 'bg-muted/50' : 'bg-card'
 })
 
-const ADD_BUTTONS: Array<{ kind: RelativeKind; label: string; text: string; position: string }> = [
+interface AddButton {
+  kind: RelativeKind
+  label: string
+  text: string
+}
+
+/**
+ * Buttons sit above and below the node, never at its sides, so they never cover a partner.
+ * Siblings share the parents (above); a partner shares the children (below).
+ */
+const ADD_ROWS: Array<{ id: string; position: string; buttons: AddButton[] }> = [
   {
-    kind: 'parent',
-    label: 'Dodaj rodzica',
-    text: 'rodzic',
-    position: 'bottom-full left-1/2 mb-1 -translate-x-1/2',
+    id: 'add-above',
+    position: 'bottom-full mb-1',
+    buttons: [
+      { kind: 'sibling', label: 'Dodaj rodzeństwo', text: 'rodzeństwo' },
+      { kind: 'parent', label: 'Dodaj rodzica', text: 'rodzic' },
+    ],
   },
   {
-    kind: 'partner',
-    label: 'Dodaj partnera',
-    text: 'partner',
-    position: 'left-full top-1/2 ml-1 -translate-y-1/2',
-  },
-  {
-    kind: 'child',
-    label: 'Dodaj dziecko',
-    text: 'dziecko',
-    position: 'top-full left-1/2 mt-1 -translate-x-1/2',
-  },
-  {
-    kind: 'sibling',
-    label: 'Dodaj rodzeństwo',
-    text: 'rodzeństwo',
-    position: 'right-full top-1/2 mr-1 -translate-y-1/2',
+    id: 'add-below',
+    position: 'top-full mt-1',
+    buttons: [
+      { kind: 'child', label: 'Dodaj dziecko', text: 'dziecko' },
+      { kind: 'partner', label: 'Dodaj partnera', text: 'partner' },
+    ],
   },
 ]
 </script>
@@ -121,17 +123,24 @@ const ADD_BUTTONS: Array<{ kind: RelativeKind; label: string; text: string; posi
       >?</span
     >
     <template v-if="selected && editable">
-      <button
-        v-for="button in ADD_BUTTONS"
-        :key="button.kind"
-        type="button"
-        :aria-label="button.label"
-        class="nodrag nopan absolute flex h-6 items-center whitespace-nowrap rounded-full border bg-background px-2 text-xs text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
-        :class="button.position"
-        @click.stop="$emit('add', button.kind)"
+      <div
+        v-for="row in ADD_ROWS"
+        :key="row.id"
+        :data-testid="row.id"
+        class="absolute left-1/2 flex -translate-x-1/2 gap-1"
+        :class="row.position"
       >
-        + {{ button.text }}
-      </button>
+        <button
+          v-for="button in row.buttons"
+          :key="button.kind"
+          type="button"
+          :aria-label="button.label"
+          class="nodrag nopan flex h-6 items-center whitespace-nowrap rounded-full border bg-background px-2 text-xs text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
+          @click.stop="$emit('add', button.kind)"
+        >
+          + {{ button.text }}
+        </button>
+      </div>
     </template>
   </div>
 </template>
