@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { RouterView } from 'vue-router'
+import { ReviewButton } from '@/features/research'
 import { SearchBox } from '@/features/search'
 import { CenterOnSelfButton } from '@/features/tree'
 import SaveStatusIndicator from '@/shared/components/SaveStatusIndicator.vue'
@@ -19,6 +20,7 @@ const hasPersons = computed(() => (store.data?.persons.length ?? 0) > 0)
     <header class="flex shrink-0 items-center justify-between gap-4 border-b px-4 py-2">
       <div class="flex items-center gap-2">
         <SearchBox v-if="hasPersons" />
+        <ReviewButton v-if="hasPersons" />
         <CenterOnSelfButton />
       </div>
       <SaveStatusIndicator

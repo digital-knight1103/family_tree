@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { AddPersonForm } from '@/features/editor'
 import { PersonCard, PersonEditForm, personCardView } from '@/features/person'
+import { ReviewList } from '@/features/research'
 import { useFamilyStore } from '@/stores/family'
 import { usePanelStore } from '@/stores/panel'
 import { usePhotoStore } from '@/stores/photos'
@@ -35,11 +36,15 @@ const photoUrl = computed(() => {
     aria-label="Panel osoby"
     class="w-[360px] shrink-0 overflow-y-auto border-l bg-background p-4"
   >
-    <div class="mb-4 flex justify-end">
-      <Button variant="ghost" size="sm" @click="panel.close()">Zamknij</Button>
+    <div class="mb-4 flex justify-between gap-2">
+      <Button v-if="panel.canReturnToReview" variant="ghost" size="sm" @click="panel.openReview()">
+        Wróć do listy
+      </Button>
+      <Button variant="ghost" size="sm" class="ml-auto" @click="panel.close()">Zamknij</Button>
     </div>
+    <ReviewList v-if="panel.view.kind === 'review'" />
     <PersonCard
-      v-if="card"
+      v-else-if="card"
       :view="card"
       :photo-url="photoUrl"
       :can-edit="family.canEdit"
