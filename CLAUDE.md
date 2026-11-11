@@ -2,7 +2,7 @@
 
 ## Projekt
 
-Drzewo Rodzinne: prywatna, lokalna aplikacja (Vue 3 + TypeScript) do budowania i przeglądania drzewa genealogicznego rodziny autora. Interfejs wyłącznie po polsku. Specyfikacja: [docs/specs/2026-11-04-mvp-design.md](docs/specs/2026-11-04-mvp-design.md), plany: [docs/plans/](docs/plans/), decyzje: [docs/decisions/](docs/decisions/).
+Drzewo Rodzinne: prywatna, lokalna aplikacja (Vue 3 + TypeScript) do budowania i przeglądania drzewa genealogicznego rodziny autora. Interfejs wyłącznie po polsku. Specyfikacja: [docs/specs/2026-11-04-mvp-design.md](docs/specs/2026-11-04-mvp-design.md), plany: [docs/plans/](docs/plans/), decyzje: [docs/decisions/](docs/decisions/). Stan prac: mapa planów w [docs/plans/2026-11-04-mvp-01-foundation.md](docs/plans/2026-11-04-mvp-01-foundation.md) i sekcja „Stan prac” na górze każdego planu (tam też kroki na wznowienie).
 
 ## Komendy
 
@@ -18,10 +18,10 @@ Drzewo Rodzinne: prywatna, lokalna aplikacja (Vue 3 + TypeScript) do budowania i
 
 - `src/app/`: start aplikacji, router, główny komponent
 - `src/domain/`: model, daty, relacje, układ drzewa (czysty TS, bez Vue)
-- `src/domain/tree-layout/`: układ drzewa (pokolenia, graf, elkjs)
+- `src/domain/tree-layout/`: układ drzewa (pokolenia, graf, kolejność w rzędach, pozycje x w `placement.ts`; elkjs tylko prowadzi linie)
 - `src/data/`: dostęp do danych (`repository.ts`; HTTP w dev, statyczny seed w buildzie) i kolejka zapisów
 - `src/features/<x>/`: funkcje (drzewo, osoba, edytor, wyszukiwarka, do sprawdzenia)
-- `src/features/tree/`: drzewo (płótno Vue Flow, węzeł osoby, nawigacja, przyciski „+”)
+- `src/features/tree/`: drzewo (płótno Vue Flow, węzeł osoby i jego rozmiar z pomiaru tekstu w `node-size.ts`, podświetlenie najbliższych w `highlight.ts`, nawigacja, przyciski „+”)
 - `src/features/person/`: karta i edycja osoby, relacje, zdjęcie, usuwanie
 - `src/features/editor/`: dodawanie krewnych, łączenie z istniejącą osobą
 - `src/app/SidePanel.vue`: panel boczny (karta, edycja, dodawanie)

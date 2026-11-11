@@ -122,7 +122,7 @@ Schemat Zod w `src/domain/schema.ts`. Typy TS wyprowadzane z niego (`z.infer`).
       "bio": "markdown",
       "researchNotes": "zwykły tekst / markdown",
       "photo": "p_....webp",          // nazwa pliku w photos/ lub brak
-      "living": false                  // na przyszłość (filtr publikacji); edytowalne w formularzu
+      "living": true                   // na przyszłość (filtr publikacji); nowe osoby domyślnie true
     }
   ],
   "parentChild": [
@@ -215,12 +215,14 @@ Osoby niepołączone z resztą drzewa wyświetlają się jako osobne grupy obok,
 - **Rodzic:** blokowany, gdy osoba ma już 2 rodziców biologicznych. Gdy dodawany jest drugi rodzic, a pierwszy nie ma jeszcze partnera, aplikacja automatycznie tworzy między nimi związek typu „małżeństwo” (decyzja wykonawcy; typ można zmienić w edycji).
 - **Partner:** tworzy osobę i związek (domyślnie „małżeństwo”).
 - **Rodzeństwo:** tworzy osobę z tymi samymi rodzicami co zaznaczona. Jeśli zaznaczona osoba nie ma rodziców, aplikacja najpierw tworzy jednego nieznanego rodzica (płeć „nieznana”) wspólnego dla obojga (decyzja wykonawcy).
+- **Istniejąca osoba** (zamiast nowej): wyszukiwanie po imieniu i nazwisku; „Dodaj” łączy tylko osobę widoczną na liście i dozwoloną przez reguły relacji (zmiana zapytania albo trybu czyści wybór). Krawędzie rodzic–dziecko, które ta osoba już ma (drugi partner, wspólny rodzic), są pomijane, a nie blokują operacji; osoba, która ma już wszystkich rodziców zaznaczonej, nie może zostać dodana jako rodzeństwo (2026-11-11).
+- **Nowe osoby** mają domyślnie „żyje” (`living: true`, bezpieczniej dla przyszłego filtra publikacji); automatycznie tworzony nieznany rodzic ma `living: false`. Imiona i nazwiska są zapisywane bez spacji na początku i końcu (2026-11-11).
 
 ### 6.6 Karta osoby (panel boczny)
-- **Podgląd:** zdjęcie, pełne imię i nazwisko, „z d.”, urodzenie i śmierć (data + miejsce + znacznik „do potwierdzenia”), relacje jako klikalne nazwiska (rodzice, partnerzy z typem i datami związku, dzieci, rodzeństwo), biografia wyrenderowana z markdown (bezpiecznie, bez surowego HTML), notatki badawcze w wyróżnionym polu.
+- **Podgląd:** zdjęcie, pełne imię i nazwisko, „z d.”, urodzenie i śmierć (data + miejsce + znacznik „do potwierdzenia”, pokazywany także przy fakcie bez daty i miejsca), relacje jako klikalne nazwiska (rodzice, partnerzy z typem i datami związku, dzieci, rodzeństwo), biografia wyrenderowana z markdown (bezpiecznie, bez surowego HTML; linki otwierają się w nowej karcie z `rel="noopener noreferrer"`), notatki badawcze w wyróżnionym polu.
 - Kliknięcie osoby w relacjach zaznacza ją i centruje widok.
-- **Edycja** (przycisk „Edytuj”): wszystkie pola osoby z modelu, w tym daty jako tekst z podglądem, znaczniki „do potwierdzenia”, flaga „żyje”, biografia i notatki (pole tekstowe; podgląd markdown dla biografii to decyzja wykonawcy), upload i usunięcie zdjęcia, edycja związków (typ, początek, koniec) i typu relacji rodzic–dziecko, usuwanie relacji, akcja „To jestem ja” (ustawia `settings.selfPersonId`). Walidacja formularza przez Zod.
-- **Usuwanie osoby:** okno potwierdzenia z nazwiskiem i liczbą relacji do usunięcia. Usuwa osobę, jej relacje, związki i plik zdjęcia.
+- **Edycja** (przycisk „Edytuj”): wszystkie pola osoby z modelu, w tym daty jako tekst z podglądem, znaczniki „do potwierdzenia”, flaga „żyje”, biografia i notatki (pole tekstowe; podgląd markdown dla biografii to decyzja wykonawcy), upload i usunięcie zdjęcia, edycja związków (typ, początek, koniec) i typu relacji rodzic–dziecko, usuwanie relacji, akcja „To jestem ja” (ustawia `settings.selfPersonId`). Wpisanie daty śmierci zdejmuje „żyje”. Walidacja formularza przez Zod.
+- **Usuwanie osoby:** okno potwierdzenia z nazwiskiem i liczbą relacji do usunięcia (błąd z poprzedniej próby znika przy ponownym otwarciu). Usuwa osobę, jej relacje, związki i plik zdjęcia.
 
 ### 6.7 Wyszukiwarka
 - Pole w pasku górnym, skrót klawiszowy `/` lub `Ctrl+K` (decyzja wykonawcy).
