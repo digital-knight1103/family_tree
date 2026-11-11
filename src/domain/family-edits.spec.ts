@@ -56,7 +56,7 @@ describe('addPerson', () => {
       sex: 'female',
     })
     expect(draft.persons).toEqual([
-      { id, givenNames: 'Anna', surname: 'Nowak', sex: 'female', living: false },
+      { id, givenNames: 'Anna', surname: 'Nowak', sex: 'female', living: true },
     ])
     expect(draft.settings.selfPersonId).toBeUndefined()
   })
@@ -296,7 +296,8 @@ describe('sibling', () => {
     const id = addRelative(draft, 'p_a', 'sibling', newPerson('Brat'))
     expect(draft.persons).toHaveLength(3)
     const parent = draft.persons.find((p) => p.id !== 'p_a' && p.id !== id)!
-    expect(parent).toMatchObject({ givenNames: '', surname: '', sex: 'unknown' })
+    expect(parent).toMatchObject({ givenNames: '', surname: '', sex: 'unknown', living: false })
+    expect(draft.persons.find((p) => p.id === id)!.living).toBe(true)
     expect(draft.parentChild).toEqual([
       { parentId: parent.id, childId: 'p_a', type: 'biological' },
       { parentId: parent.id, childId: id, type: 'biological' },

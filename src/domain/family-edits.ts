@@ -57,7 +57,7 @@ function takenIds(data: FamilyData): Set<string> {
   return new Set([...data.persons.map((p) => p.id), ...data.unions.map((u) => u.id)])
 }
 
-function makePerson(id: string, input: NewPersonInput, living = false): Person {
+function makePerson(id: string, input: NewPersonInput, living = true): Person {
   const person: Person = {
     id,
     givenNames: input.givenNames,
@@ -77,7 +77,7 @@ export function addPerson(
   opts: { self?: boolean; source?: IdSource } = {},
 ): string {
   const id = createId('p', takenIds(draft), opts.source)
-  draft.persons.push(makePerson(id, person, opts.self === true))
+  draft.persons.push(makePerson(id, person))
   if (opts.self === true) draft.settings.selfPersonId = id
   return id
 }
@@ -113,7 +113,7 @@ function resolveTarget(
 ): string {
   if (target.kind === 'existing') return target.personId
   const id = createId('p', taken, source)
-  work.persons.push(makePerson(id, target.person))
+  work.persons.push(makePerson(id, target.person, target.person !== UNKNOWN_PERSON))
   return id
 }
 
