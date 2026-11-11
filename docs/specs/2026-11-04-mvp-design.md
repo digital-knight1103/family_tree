@@ -184,15 +184,17 @@ Układ według zaakceptowanego szkicu:
 - Przy pierwszym wejściu widok jest wyśrodkowany na osobie „Ja”, a jeśli jej nie ma, dopasowany do całego drzewa.
 
 ### 6.3 Węzeł osoby
-- Okrągła miniatura zdjęcia (bez zdjęcia: inicjały), imię i nazwisko, druga linia z latami życia i ewentualnie „z d. <nazwisko rodowe>”.
+- Okrągła miniatura zdjęcia (bez zdjęcia: inicjały). Pierwsza linia: imiona; druga: nazwisko, z „z d. <nazwisko rodowe>”, jeśli jest; trzecia: daty życia w krótkim formacie, np. „12.03.1990 – 05.11.2020”, z niepełnymi datami i kwalifikatorami bez zmian („ok. 1890”, „03.1921”). Tekst nigdy nie jest obcinany: węzeł jest szerszy, gdy treść tego wymaga (zmiana z 2026-11-11, wcześniej imię i nazwisko w jednej linii i same lata).
 - Kolorowy akcent oznacza płeć (np. pasek z lewej). Plakietka „?” pojawia się, gdy którykolwiek fakt osoby ma `unconfirmed`.
 - Osoba nieznana (brak imion i nazwiska): przerywana ramka, wyszarzenie, etykieta „Nieznany” / „Nieznana” / „Osoba nieznana” zależnie od płci.
 - Zaznaczona osoba ma wyraźny obrys. Wokół niej pojawiają się przyciski „+” z etykietami: **rodzic** (nad), **partner** (z boku), **dziecko** (pod), **rodzeństwo** (z boku, po drugiej stronie niż partner).
+- Po zaznaczeniu osoby jej najbliżsi dostają delikatne tło, w osobnym odcieniu dla każdej grupy: rodzice, rodzeństwo, partnerzy, dzieci. Reszta drzewa lekko przygasa. Bez zaznaczenia drzewo wygląda zwyczajnie.
 
 ### 6.4 Układ drzewa (auto-layout)
 Wymagane właściwości wizualne:
 - pokolenia w poziomych rzędach (przodkowie wyżej),
-- partnerzy obok siebie w tym samym rzędzie,
+- partnerzy obok siebie w tym samym rzędzie; w parze osoba z rodziny (ma rodziców w drzewie) stoi zawsze po lewej, a jej partner po prawej (gdy rodziców mają oboje albo żadne, kolejność wynika z reszty układu, ale jest deterministyczna),
+- rodzice są wyśrodkowani nad dziećmi: środek pary (punkt związku) albo samotny rodzic stoi nad środkiem grupy swoich dzieci; gdy szersze gałęzie nie pozwalają na pełne wyśrodkowanie, układ wybiera kompromis (najmniejsze odchylenie bez nakładania się węzłów), który wykonawca pokazuje autorowi,
 - linia do dzieci wychodzi ze środka linii łączącej parę, a dziecko z jednym znanym rodzicem łączy się bezpośrednio z tym rodzicem,
 - połączenia ortogonalne, z jak najmniejszą liczbą przecięć,
 - rodzeństwo uporządkowane według daty urodzenia (klucz z 5.1),
