@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -103,14 +103,6 @@ function ruleFor(target?: RelativeTarget) {
   return canAddRelative(family.data, anchorId.value, relation.value, target, coParent.value)
 }
 
-const target = computed<RelativeTarget | undefined>(() =>
-  linkExisting.value && selectedId.value !== null
-    ? { kind: 'existing', personId: selectedId.value }
-    : undefined,
-)
-
-const rule = computed(() => ruleFor(target.value))
-
 const candidates = computed(() => {
   const data = family.data
   if (!linkExisting.value || !data || query.value.trim() === '') return []
@@ -129,12 +121,30 @@ const candidates = computed(() => {
     })
 })
 
+watch([query, linkExisting], () => {
+  selectedId.value = null
+})
+
+const chosenId = computed(() =>
+  candidates.value.some((c) => c.id === selectedId.value && c.reason === null)
+    ? selectedId.value
+    : null,
+)
+
+const target = computed<RelativeTarget | undefined>(() =>
+  linkExisting.value && chosenId.value !== null
+    ? { kind: 'existing', personId: chosenId.value }
+    : undefined,
+)
+
+const rule = computed(() => ruleFor(target.value))
+
 const blockedReason = computed(() => (rule.value.ok ? null : rule.value.reason))
 const canSubmit = computed(
   () =>
     rule.value.ok &&
     (!choiceNeeded.value || coParentChoice.value !== '') &&
-    (!linkExisting.value || selectedId.value !== null),
+    (!linkExisting.value || chosenId.value !== null),
 )
 
 function input(): NewPersonInput {

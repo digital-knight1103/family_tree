@@ -256,6 +256,31 @@ describe('AddPersonForm', () => {
       expect(wrapper.emitted('done')).toEqual([['p_x']])
     })
 
+    it('zmiana zapytania albo trybu czyści wybór, więc „Dodaj” nie łączy niewidocznej osoby', async () => {
+      const family = setup(
+        buildFamily({
+          persons: [
+            { id: 'p_a', givenNames: 'Adam' },
+            { id: 'p_x', givenNames: 'Zofia', surname: 'Wiśniewska' },
+            { id: 'p_y', givenNames: 'Jan', surname: 'Kowalski' },
+          ],
+        }),
+      )
+      const wrapper = await existing('parent')
+      await wrapper.get('input[name="search"]').setValue('wisniew')
+      await items(wrapper)[0]!.trigger('click')
+      await wrapper.get('input[name="search"]').setValue('kowal')
+      expect(button(wrapper, 'Dodaj').attributes('disabled')).toBeDefined()
+      await wrapper.get('input[name="search"]').setValue('wisniew')
+      expect(items(wrapper)[0]!.attributes('aria-pressed')).toBe('false')
+      await items(wrapper)[0]!.trigger('click')
+      await button(wrapper, 'Nowa osoba').trigger('click')
+      await button(wrapper, 'Istniejąca osoba').trigger('click')
+      expect(button(wrapper, 'Dodaj').attributes('disabled')).toBeDefined()
+      await button(wrapper, 'Dodaj').trigger('click')
+      expect(family.data!.parentChild).toEqual([])
+    })
+
     it('kotwica nie występuje na liście, a wyników jest najwyżej 8', async () => {
       setup(
         buildFamily({
