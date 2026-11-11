@@ -4,7 +4,7 @@ import type { TreeEdge, TreeGraph, TreeNode } from './graph'
 import { placeRows } from './placement'
 import { orderNodes } from './row-order'
 
-/** Smallest (and default) person node; `LayoutOptions.personWidth` can make it wider. */
+/** Smallest (and default) person node; `LayoutOptions` can make it wider and taller. */
 export const PERSON_NODE = { width: 200, height: 72 }
 export const UNION_NODE = { width: 8, height: 8 }
 
@@ -41,9 +41,12 @@ export interface TreeLayout {
 export interface LayoutOptions {
   /** Width of a person's node (e.g. measured from its text); never less than `PERSON_NODE.width`. */
   personWidth?: (personId: string) => number
+  /** Height of a person's node (e.g. with a wrapped birth place); never less than `PERSON_NODE.height`. */
+  personHeight?: (personId: string) => number
 }
 
-const NODE_SPACING = 32
+/** Room for the "+" buttons beside a node (91 px and 68 px wide, 4 px from it). */
+const NODE_SPACING = 104
 const COMPONENT_SPACING = 2 * NODE_SPACING
 /** How much lower the partner line of each further partner of the same person runs. */
 const LEVEL_STEP = 12
@@ -133,27 +136,35 @@ export async function layoutTree(
   options: LayoutOptions = {},
 ): Promise<TreeLayout> {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]))
-  const widthOf = (nodeId: string) => {
+  const sizeOf = (nodeId: string, measure: LayoutOptions['personWidth'], least: number) => {
     const node = byId.get(nodeId)!
-    const width = node.kind === 'person' ? options.personWidth?.(node.personId) : undefined
-    return width !== undefined && Number.isFinite(width) && width > PERSON_NODE.width
-      ? width
-      : PERSON_NODE.width
+    const size = node.kind === 'person' ? measure?.(node.personId) : undefined
+    return size !== undefined && Number.isFinite(size) && size > least ? size : least
   }
+  const widthOf = (nodeId: string) => sizeOf(nodeId, options.personWidth, PERSON_NODE.width)
+  const personHeightOf = (nodeId: string) =>
+    sizeOf(nodeId, options.personHeight, PERSON_NODE.height)
   const ordered = orderNodes(graph)
   const placement = placeRows(graph, ordered, widthOf, NODE_SPACING)
   const centreOf = (nodeId: string) =>
     placement.personX.get(nodeId) ?? placement.unions.get(nodeId)!.x
 
+  // A person row is as tall as its tallest person: ELK gets every node of the row at that height,
+  // so the row's tops line up and the union row (with the partner lines) lies below all of them.
   // A union row is as tall as its lowest partner line needs.
+  const personRowHeight = new Map<number, number>()
   const unionHeight = new Map<number, number>()
   for (const node of graph.nodes) {
-    if (node.kind !== 'union') continue
-    const height = UNION_NODE.height + placement.unions.get(node.id)!.level * LEVEL_STEP
-    unionHeight.set(node.generation, Math.max(unionHeight.get(node.generation) ?? 0, height))
+    const [heights, height] =
+      node.kind === 'person'
+        ? [personRowHeight, personHeightOf(node.id)]
+        : [unionHeight, UNION_NODE.height + placement.unions.get(node.id)!.level * LEVEL_STEP]
+    heights.set(node.generation, Math.max(heights.get(node.generation) ?? 0, height))
   }
   const heightOf = (row: number) =>
-    row % 2 === 0 ? PERSON_NODE.height : (unionHeight.get((row - 1) / 2) ?? UNION_NODE.height)
+    row % 2 === 0
+      ? (personRowHeight.get(row / 2) ?? PERSON_NODE.height)
+      : (unionHeight.get((row - 1) / 2) ?? UNION_NODE.height)
 
   /** Partner edges within a row are drawn along the union's partner line, not routed by ELK. */
   const drawnHere = (edge: TreeEdge) =>
@@ -172,7 +183,7 @@ export async function layoutTree(
       x,
       y: 0,
       width,
-      height: PERSON_NODE.height,
+      height: heightOf(rowOf(node)),
       layoutOptions: {
         'elk.partitioning.partition': String(rowOf(node)),
         'elk.position': `(${x}, ${rowOf(node)})`,
@@ -230,7 +241,14 @@ export async function layoutTree(
   const nodes = graph.nodes.map((node): PositionedNode => {
     const { x = 0, y = 0 } = positioned.get(node.id)!
     return node.kind === 'person'
-      ? { id: node.id, kind: node.kind, x, y, width: widthOf(node.id), height: PERSON_NODE.height }
+      ? {
+          id: node.id,
+          kind: node.kind,
+          x,
+          y,
+          width: widthOf(node.id),
+          height: personHeightOf(node.id),
+        }
       : {
           id: node.id,
           kind: node.kind,
@@ -256,7 +274,7 @@ export async function layoutTree(
     })
     // ELK starts the line at the bottom of the first node of the chain. It runs straight down
     // from there, so it can start higher: at the union point (moved down for a lower partner
-    // line) or at the person itself.
+    // line) or at the person itself (shorter than its row).
     const source = nodeById.get(edge.source)!
     if (points[0]) points[0].y = source.y + source.height
     return { ...edge, points: straighten(points) }

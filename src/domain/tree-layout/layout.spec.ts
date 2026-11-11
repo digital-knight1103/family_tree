@@ -6,7 +6,7 @@ import { familyDataSchema, type FamilyData } from '@/domain/schema'
 import { buildFamily } from '@tests/fixtures/build-family'
 import { buildLargeFamily } from '@tests/fixtures/large-family'
 import { centerX, countCrossings, segments } from '@tests/fixtures/layout-metrics'
-import { buildTreeGraph } from './graph'
+import { buildTreeGraph, type TreeGraph } from './graph'
 import { layoutTree, PERSON_NODE, type PositionedNode, type TreeLayout } from './layout'
 
 const demo = familyDataSchema.parse(seed)
@@ -469,9 +469,10 @@ describe('layoutTree (rodzice nad środkiem dzieci, szerokość węzła)', () =>
     const nodes = byId(result)
     const deviationF = Math.abs(center(nodes, 'union:u_1') - center(nodes, 'person:p_c'))
     const deviationG = Math.abs(center(nodes, 'union:u_2') - center(nodes, 'person:p_d'))
-    // Pairs of parents stand at least 464 px apart (union to union), the couple 232 px: 116 px each.
-    expect(Math.abs(deviationF - 116)).toBeLessThanOrEqual(1)
-    expect(Math.abs(deviationG - 116)).toBeLessThanOrEqual(1)
+    // Pairs of parents stand at least 608 px apart (union to union: 200 + 104 + 200 + 104), the
+    // couple 304 px (200 + 104): 152 px each.
+    expect(Math.abs(deviationF - 152)).toBeLessThanOrEqual(1)
+    expect(Math.abs(deviationG - 152)).toBeLessThanOrEqual(1)
     noOverlaps(result)
   })
 
@@ -566,4 +567,189 @@ describe('layoutTree (rodzice nad środkiem dzieci, szerokość węzła)', () =>
     }
     expect(await layoutTree(buildTreeGraph(reversed), options)).toEqual(result)
   })
+})
+
+describe('layoutTree (wysokość węzła i odstęp w rzędzie)', () => {
+  const people = (result: TreeLayout) => result.nodes.filter((n) => n.kind === 'person')
+  const rowsOf = (graph: TreeGraph, result: TreeLayout) => {
+    const generationOf = new Map(graph.nodes.map((n) => [n.id, n.generation]))
+    const rows = new Map<number, PositionedNode[]>()
+    for (const n of people(result)) {
+      const generation = generationOf.get(n.id)!
+      rows.set(generation, [...(rows.get(generation) ?? []), n])
+    }
+    return rows
+  }
+  /** The shared checks, plus rows that read as rows and lines that meet the nodes' edges. */
+  const invariants = (graph: TreeGraph, result: TreeLayout) => {
+    const nodes = byId(result)
+    const generationOf = new Map(graph.nodes.map((n) => [n.id, n.generation]))
+    for (const a of result.nodes) {
+      for (const b of result.nodes) {
+        if (a.id < b.id) expect(overlaps(a, b), `${a.id} nachodzi na ${b.id}`).toBe(false)
+      }
+    }
+    const rows = rowsOf(graph, result)
+    const generations = [...rows.keys()].sort((a, b) => a - b)
+    for (const [i, generation] of generations.entries()) {
+      const row = rows.get(generation)!
+      for (const n of row) expect(n.y, `${n.id}: góra rzędu`).toBe(row[0]!.y)
+      const next = rows.get(generations[i + 1]!)
+      if (next) {
+        const bottom = Math.max(...row.map((n) => n.y + n.height))
+        expect(next[0]!.y, `rząd ${generation + 1} pod rzędem ${generation}`).toBeGreaterThan(
+          bottom,
+        )
+      }
+    }
+    for (const edge of result.edges) {
+      const source = nodes.get(edge.source)!
+      const target = nodes.get(edge.target)!
+      const first = edge.points[0]!
+      const last = edge.points[edge.points.length - 1]!
+      expect(Math.abs(first.x - centerX(source)), `${edge.id}: start x`).toBeLessThanOrEqual(0.5)
+      expect(Math.abs(first.y - (source.y + source.height)), `${edge.id}: start y`).toBeLessThan(
+        0.5,
+      )
+      if (edge.kind === 'partner' && generationOf.get(source.id) === generationOf.get(target.id)) {
+        expect(target.y, `${target.id} pod ${source.id}`).toBeGreaterThan(source.y + source.height)
+      }
+      if (edge.kind === 'child') {
+        expect(Math.abs(last.y - target.y), `${edge.id}: koniec na górze dziecka`).toBeLessThan(0.5)
+        expect(last.x, `${edge.id}: koniec nad dzieckiem`).toBeGreaterThan(target.x)
+        expect(last.x, `${edge.id}: koniec nad dzieckiem`).toBeLessThan(target.x + target.width)
+      }
+      for (const [p, q] of segments(edge)) {
+        expect(Math.abs(p.x - q.x) <= 0.5 || Math.abs(p.y - q.y) <= 0.5, edge.id).toBe(true)
+        for (const n of people(result)) {
+          const through =
+            Math.max(p.x, q.x) > n.x + 0.5 &&
+            Math.min(p.x, q.x) < n.x + n.width - 0.5 &&
+            Math.max(p.y, q.y) > n.y + 0.5 &&
+            Math.min(p.y, q.y) < n.y + n.height - 0.5
+          expect(through, `${edge.id} przechodzi przez ${n.id}`).toBe(false)
+        }
+      }
+    }
+  }
+  const wide = (personId: string) => 200 + (personId.length % 4) * 70
+  const tall = (personId: string) => 72 + ((personId.length * 7) % 5) * 23
+  /** Grandparents, two children with partners, grandchildren; heights mixed in every row. */
+  const family = buildFamily({
+    persons: [
+      { id: 'p_dziadek' },
+      { id: 'p_babcia' },
+      { id: 'p_syn', birth: { date: { year: 1970 } } },
+      { id: 'p_corka', birth: { date: { year: 1972 } } },
+      { id: 'p_synowa' },
+      { id: 'p_ziec' },
+      { id: 'p_wnuk', birth: { date: { year: 2000 } } },
+      { id: 'p_wnuczka', birth: { date: { year: 2002 } } },
+      { id: 'p_wnuk2', birth: { date: { year: 2004 } } },
+    ],
+    parentChild: [
+      ['p_dziadek', 'p_syn'],
+      ['p_babcia', 'p_syn'],
+      ['p_dziadek', 'p_corka'],
+      ['p_babcia', 'p_corka'],
+      ['p_syn', 'p_wnuk'],
+      ['p_synowa', 'p_wnuk'],
+      ['p_syn', 'p_wnuczka'],
+      ['p_synowa', 'p_wnuczka'],
+      ['p_corka', 'p_wnuk2'],
+    ],
+    unions: [
+      ['p_dziadek', 'p_babcia'],
+      ['p_syn', 'p_synowa'],
+      ['p_corka', 'p_ziec'],
+    ],
+  })
+  const heights: Record<string, number> = {
+    p_dziadek: 72,
+    p_babcia: 140,
+    p_syn: 160,
+    p_corka: 90,
+    p_synowa: 72,
+    p_ziec: 120,
+    p_wnuk: 100,
+    p_wnuczka: 72,
+    p_wnuk2: 180,
+  }
+
+  it('wysokość osoby pochodzi z personHeight, najmniej PERSON_NODE.height', async () => {
+    const given: Record<string, number> = {
+      p_dziadek: 130,
+      p_babcia: 40,
+      p_syn: Number.NaN,
+      p_corka: Number.POSITIVE_INFINITY,
+    }
+    const graph = buildTreeGraph(family)
+    const nodes = byId(await layoutTree(graph, { personHeight: (id) => given[id] ?? 0 }))
+    expect(nodes.get('person:p_dziadek')!.height).toBe(130)
+    expect(nodes.get('person:p_babcia')!.height).toBe(PERSON_NODE.height)
+    expect(nodes.get('person:p_syn')!.height).toBe(PERSON_NODE.height)
+    expect(nodes.get('person:p_corka')!.height).toBe(PERSON_NODE.height)
+    expect(nodes.get('person:p_ziec')!.height).toBe(PERSON_NODE.height)
+    const plain = byId(await layoutTree(graph))
+    for (const node of plain.values()) {
+      if (node.kind === 'person') expect(node.height).toBe(PERSON_NODE.height)
+    }
+  })
+
+  it('różne wysokości w rzędzie i między rzędami: rzędy się nie nakładają, linie od dołu do góry', async () => {
+    const graph = buildTreeGraph(family)
+    const result = await layoutTree(graph, { personHeight: (id) => heights[id] ?? 0 })
+    invariants(graph, result)
+    const nodes = byId(result)
+    // The tallest node of a row pushes the next row down.
+    expect(nodes.get('person:p_syn')!.y).toBeGreaterThan(nodes.get('person:p_babcia')!.y + 140)
+    expect(nodes.get('person:p_wnuk')!.y).toBeGreaterThan(nodes.get('person:p_syn')!.y + 160)
+    expect(result.height).toBeGreaterThan(nodes.get('person:p_wnuk2')!.y + 180)
+  })
+
+  it('sąsiednie węzły w rzędzie, także partnerzy, stoją co najmniej 104 px od siebie', async () => {
+    const graph = buildTreeGraph(family)
+    const result = await layoutTree(graph, { personWidth: wide })
+    const partners = new Set(
+      family.unions.map((u) =>
+        [...u.partnerIds]
+          .map((id) => `person:${id}`)
+          .sort()
+          .join(' '),
+      ),
+    )
+    let partnerGaps = 0
+    let tightGaps = 0
+    for (const row of rowsOf(graph, result).values()) {
+      row.sort((a, b) => a.x - b.x)
+      for (const [i, b] of row.entries()) {
+        const a = row[i - 1]
+        if (!a) continue
+        const gap = b.x - (a.x + a.width)
+        expect(gap, `${a.id} – ${b.id}`).toBeGreaterThanOrEqual(104 - 0.5)
+        if (Math.abs(gap - 104) <= 0.5) tightGaps++
+        if (partners.has([a.id, b.id].sort().join(' '))) {
+          expect(Math.abs(gap - 104), `${a.id} – ${b.id}`).toBeLessThanOrEqual(0.5)
+          partnerGaps++
+        }
+      }
+    }
+    expect(partnerGaps).toBe(3)
+    // Siblings' blocks stand as close as allowed: syn + synowa, then córka + zięć.
+    expect(tightGaps).toBeGreaterThan(partnerGaps)
+  })
+
+  it(
+    'wspólne niezmienniki na danych demo i dużej rodzinie przy różnych szerokościach i wysokościach',
+    { timeout: 20_000 },
+    async () => {
+      for (const data of [demo, buildLargeFamily()]) {
+        const graph = buildTreeGraph(data)
+        const options = { personWidth: wide, personHeight: tall }
+        const result = await layoutTree(graph, options)
+        invariants(graph, result)
+        expect(await layoutTree(graph, options)).toEqual(result)
+      }
+    },
+  )
 })
