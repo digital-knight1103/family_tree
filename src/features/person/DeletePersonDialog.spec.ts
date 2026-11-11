@@ -144,6 +144,21 @@ describe('DeletePersonDialog', () => {
     expect(repository.deletePhoto).not.toHaveBeenCalled()
   })
 
+  it('ponowne otwarcie okna nie pokazuje starego błędu', async () => {
+    const family = setup(data())
+    family.update = () => {
+      throw new Error('Dane zmieniły się w innej karcie, odśwież')
+    }
+    const wrapper = await open()
+    button('Usuń').click()
+    await flushPromises()
+    button('Anuluj').click()
+    await flushPromises()
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(document.body.querySelector('[role="alertdialog"] [role="alert"]')).toBeNull()
+  })
+
   it('„Anuluj” niczego nie zmienia', async () => {
     const family = setup(data())
     await open()

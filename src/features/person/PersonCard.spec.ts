@@ -46,6 +46,15 @@ describe('PersonCard', () => {
     expect(confirmed.text()).not.toContain('do potwierdzenia')
   })
 
+  it('fakt bez daty i miejsca, ale niepotwierdzony, pokazuje sekcję z plakietką', () => {
+    const text = render(false, {
+      birth: undefined,
+      death: { date: '', place: '', unconfirmed: true },
+    }).text()
+    expect(text).toContain('Śmierć')
+    expect(text).toContain('do potwierdzenia')
+  })
+
   it('nie pokazuje pustych sekcji', () => {
     const text = render(false).text()
     for (const title of ['Śmierć', 'Partnerzy', 'Dzieci', 'Rodzeństwo', 'Biografia', 'Notatki'])

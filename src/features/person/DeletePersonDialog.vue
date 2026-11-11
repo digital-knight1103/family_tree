@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -26,6 +26,10 @@ const displayName = computed(() => (person.value ? personNodeView(person.value).
 const relations = computed(() => (family.data ? relationCount(family.data, props.personId) : 0))
 
 const open = ref(false)
+
+watch(open, (isOpen) => {
+  if (isOpen) error.value = null
+})
 
 // Data first: a failed delete must never leave a person pointing at a removed photo file.
 async function confirm() {

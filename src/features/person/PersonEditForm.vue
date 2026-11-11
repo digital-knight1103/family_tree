@@ -72,9 +72,11 @@ function saveFact(key: FactKey, patch: Partial<Fact>) {
   run((draft) => updateFact(draft, id, key, patch))
 }
 
+const TRIMMED: ReadonlySet<TextKey> = new Set(['givenNames', 'surname', 'maidenName'])
+
 function onText(key: TextKey, value: string | number) {
   fields[key] = String(value)
-  savePerson({ [key]: fields[key] })
+  savePerson({ [key]: TRIMMED.has(key) ? fields[key].trim() : fields[key] })
 }
 
 function onPlace(key: FactKey, value: string | number) {
@@ -84,7 +86,12 @@ function onPlace(key: FactKey, value: string | number) {
 }
 
 function onDate(key: FactKey, date: GenDate | undefined) {
-  saveFact(key, { date })
+  if (key !== 'death' || date === undefined) return saveFact(key, { date })
+  const id = props.personId
+  run((draft) => {
+    updateFact(draft, id, key, { date })
+    updatePerson(draft, id, { living: false })
+  })
 }
 
 function onSex(value: unknown) {

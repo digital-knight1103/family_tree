@@ -46,6 +46,29 @@ describe('PersonEditForm', () => {
     expect(updates.every((u) => u?.immediate === undefined)).toBe(true)
   })
 
+  it('imiona, nazwisko i nazwisko rodowe zapisują się po trim, pole zostaje jak wpisane', async () => {
+    const family = setup(buildFamily({ persons: [{ id: 'p_a', sex: 'female' }] }))
+    const wrapper = mountForm()
+    await wrapper.get('#edit-given-names').setValue('Anna ')
+    await wrapper.get('#edit-surname').setValue('  Nowak ')
+    await wrapper.get('#edit-maiden-name').setValue(' Kowalska')
+    expect((wrapper.get('#edit-given-names').element as HTMLInputElement).value).toBe('Anna ')
+    const saved = family.data!.persons[0]!
+    expect([saved.givenNames, saved.surname, saved.maidenName]).toEqual([
+      'Anna',
+      'Nowak',
+      'Kowalska',
+    ])
+  })
+
+  it('data śmierci zdejmuje „Żyje”', async () => {
+    const family = setup(buildFamily({ persons: [{ id: 'p_a', living: true }] }))
+    const wrapper = mountForm()
+    await wrapper.get('#edit-death-date').setValue('1950')
+    expect(family.data!.persons[0]!.death?.date).toEqual({ year: 1950 })
+    expect(family.data!.persons[0]!.living).toBe(false)
+  })
+
   it('pusta biografia usuwa klucz', async () => {
     const family = setup(buildFamily({ persons: [{ id: 'p_a', bio: 'x' }] }))
     const wrapper = mountForm()

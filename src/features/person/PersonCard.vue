@@ -7,7 +7,7 @@ const props = defineProps<{ view: PersonCardView; photoUrl?: string; canEdit: bo
 defineEmits<{ select: [personId: string]; edit: [] }>()
 
 function hasContent(fact: FactView | undefined): fact is FactView {
-  return fact !== undefined && (fact.date !== '' || fact.place !== '')
+  return fact !== undefined && (fact.date !== '' || fact.place !== '' || fact.unconfirmed)
 }
 
 function factText(fact: FactView): string {
