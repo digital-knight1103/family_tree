@@ -131,6 +131,60 @@ describe('orderNodes', () => {
     expect(personRow(buildTreeGraph(data), 1)).toEqual(['a', 'druga', 'pierwsza'])
   })
 
+  it('partner partnera stoi na zewnątrz pary, nie między partnerami', () => {
+    const graph = buildTreeGraph(
+      buildFamily({
+        persons: [{ id: 'p_m' }, { id: 'p_f' }, { id: 'p_r' }, { id: 'p_p' }, { id: 'p_q' }],
+        parentChild: [
+          ['p_m', 'p_r'],
+          ['p_f', 'p_r'],
+        ],
+        unions: [
+          ['p_m', 'p_f'],
+          ['p_r', 'p_p'],
+          ['p_p', 'p_q'],
+        ],
+      }),
+    )
+    expect(personRow(graph, 1)).toEqual(['r', 'p', 'q'])
+  })
+
+  it('partner partnera z rodzicami w drzewie nie staje między partnerami', () => {
+    const data = buildFamily({
+      persons: [
+        { id: 'p_m' },
+        { id: 'p_f' },
+        { id: 'p_g1' },
+        { id: 'p_g2' },
+        { id: 'p_r' },
+        { id: 'p_p' },
+        { id: 'p_s' },
+      ],
+      parentChild: [
+        ['p_m', 'p_r'],
+        ['p_f', 'p_r'],
+        ['p_g1', 'p_s'],
+        ['p_g2', 'p_s'],
+      ],
+      unions: [
+        ['p_m', 'p_f'],
+        ['p_g1', 'p_g2'],
+        ['p_r', 'p_p'],
+        ['p_p', 'p_s'],
+      ],
+    })
+    const row = personRow(buildTreeGraph(data), 1)
+    expect(Math.abs(row.indexOf('r') - row.indexOf('p'))).toBe(1)
+    expect(Math.abs(row.indexOf('p') - row.indexOf('s'))).toBe(1)
+    const reversed = {
+      ...data,
+      persons: [...data.persons].reverse(),
+      parentChild: [...data.parentChild].reverse(),
+      unions: [...data.unions].reverse(),
+    }
+    expect(personRow(buildTreeGraph(reversed), 1)).toEqual(row)
+  })
+
   it('kolejność nie zależy od kolejności danych wejściowych', () => {
     const data = familyDataSchema.parse(seed)
     const reversed = {

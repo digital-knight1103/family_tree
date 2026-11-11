@@ -128,6 +128,7 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
      * partner stands to the right of the person with parents (a person with several partners has
      * all of them on the right, in the order of the unions, then by birth). Partners on the same
      * footing (both with parents or both without) take the free side, the left one first.
+     * A partner of a partner stands on the outer side, so a couple is never split.
      * Returns `undefined` for other blocks, which the sweeps orient freely.
      */
     function anchoredOrder(members: string[]): string[] | undefined {
@@ -137,6 +138,8 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
       if (!root) return undefined
       const left = new Map<string, string[]>(members.map((id) => [id, []]))
       const right = new Map<string, string[]>(members.map((id) => [id, []]))
+      /** The side each placed partner took next to the person it was attached to. */
+      const sideOf = new Map<string, 'left' | 'right'>()
       const queue = [root]
       const placed = new Set(queue)
       for (let i = 0; i < queue.length; i++) {
@@ -152,8 +155,14 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
         for (const partner of partners) {
           placed.add(partner)
           queue.push(partner)
-          const toRight =
-            hasParents(id) !== hasParents(partner) ? hasParents(id) : left.get(id)!.length > 0
+          // The side facing the person `id` was attached to is taken, so its partners go outward.
+          const outward = sideOf.get(id)
+          const toRight = outward
+            ? outward === 'right'
+            : hasParents(id) !== hasParents(partner)
+              ? hasParents(id)
+              : left.get(id)!.length > 0
+          sideOf.set(partner, toRight ? 'right' : 'left')
           ;(toRight ? right : left).get(id)!.push(partner)
         }
       }

@@ -546,6 +546,40 @@ describe('layoutTree (rodzice nad środkiem dzieci, szerokość węzła)', () =>
     noOverlaps(result)
   })
 
+  it('partner partnera: punkt związku stoi między partnerami, osobno od drugiego związku', async () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_m' }, { id: 'p_f' }, { id: 'p_r' }, { id: 'p_p' }, { id: 'p_q' }],
+      parentChild: [
+        ['p_m', 'p_r'],
+        ['p_f', 'p_r'],
+      ],
+      unions: [
+        ['p_m', 'p_f'],
+        ['p_r', 'p_p'],
+        ['p_p', 'p_q'],
+      ],
+    })
+    const result = await layout(data)
+    const nodes = byId(result)
+    const [r, p, q] = ['p_r', 'p_p', 'p_q'].map((id) => center(nodes, `person:${id}`)) as [
+      number,
+      number,
+      number,
+    ]
+    const u2 = center(nodes, 'union:u_2')
+    const u3 = center(nodes, 'union:u_3')
+    expect(u2).toBeGreaterThan(Math.min(r, p))
+    expect(u2).toBeLessThan(Math.max(r, p))
+    expect(u3).toBeGreaterThan(Math.min(p, q))
+    expect(u3).toBeLessThan(Math.max(p, q))
+    expect(Math.abs(u2 - u3)).toBeGreaterThan(1)
+    // R and P stand side by side, 40 px apart, with the R–P union point in that gap.
+    const [rNode, pNode] = [nodes.get('person:p_r')!, nodes.get('person:p_p')!]
+    expect(Math.abs(pNode.x - (rNode.x + rNode.width) - 40)).toBeLessThanOrEqual(0.5)
+    expect(Math.abs(u2 - (rNode.x + rNode.width + pNode.x) / 2)).toBeLessThanOrEqual(1)
+    noOverlaps(result)
+  })
+
   it('szerokość osoby pochodzi z personWidth, najmniej PERSON_NODE.width', async () => {
     const widths: Record<string, number> = { p_a: 320, p_b: 120, p_c: Number.NaN }
     const data = buildFamily({
