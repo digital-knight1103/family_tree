@@ -97,6 +97,7 @@ watch(
           :view="nodeData.view"
           :photo-url="nodeData.photoUrl"
           :width="nodeData.width"
+          :height="nodeData.height"
           :highlight="nodeData.highlight"
           :selected="nodeData.view.personId === selection.selectedPersonId"
           :editable="editable"

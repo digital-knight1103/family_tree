@@ -10,6 +10,7 @@ export interface PersonNodeView {
   nameLine: string
   surnameLine: string
   dates: string
+  birthPlace: string
   maidenLine: string
   initials: string
   sex: Sex
@@ -48,6 +49,7 @@ export function personNodeView(person: Person): PersonNodeView {
     nameLine: unknown ? UNKNOWN_LABELS[person.sex] : givenNames,
     surnameLine: unknown ? '' : [surname, maidenLine].filter((part) => part !== '').join(' '),
     dates: fullLifeSpan(person.birth?.date, person.death?.date, !person.living),
+    birthPlace: person.birth?.place?.trim() ?? '',
     maidenLine,
     initials: unknown
       ? '?'

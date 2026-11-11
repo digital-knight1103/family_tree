@@ -91,6 +91,13 @@ describe('personNodeView', () => {
       expect(view.dates).toBe(expected)
     })
 
+    it('podaje miejscowość urodzenia bez zbędnych spacji albo pusty tekst', () => {
+      expect(personNodeView(person({ birth: { place: ' Górki Wielkie ' } })).birthPlace).toBe(
+        'Górki Wielkie',
+      )
+      expect(personNodeView(person()).birthPlace).toBe('')
+    })
+
     it('osoba żyjąca z datą urodzenia ma samą datę urodzenia', () => {
       const view = personNodeView(
         person({ living: true, birth: { date: { year: 1990, month: 3, day: 12 } } }),

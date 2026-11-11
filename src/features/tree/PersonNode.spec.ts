@@ -10,6 +10,7 @@ const view: PersonNodeView = {
   nameLine: 'Jan',
   surnameLine: 'Kowalczyk',
   dates: '12.03.1890 – 1958',
+  birthPlace: '',
   maidenLine: '',
   initials: 'JK',
   sex: 'male',
@@ -44,6 +45,21 @@ describe('PersonNode', () => {
     expect(wrapper.html()).not.toContain('truncate')
     expect(wrapper.text()).toContain('JK')
     expect(wrapper.find('img').exists()).toBe(false)
+  })
+
+  it('pokazuje miejscowość urodzenia z pinezką tylko, gdy jest', () => {
+    expect(mountNode().find('[data-testid="birth-place"]').exists()).toBe(false)
+    const place = mountNode({ view: { birthPlace: 'Górki Wielkie' } }).get(
+      '[data-testid="birth-place"]',
+    )
+    expect(place.text()).toBe('Górki Wielkie')
+    expect(place.find('svg').exists()).toBe(true)
+    expect(place.html()).not.toContain('truncate')
+  })
+
+  it('ma wysokość z układu', () => {
+    const node = mount(PersonNode, { props: { view, selected: false, height: 100 } })
+    expect(node.get('[data-testid="person-node"]').attributes('style')).toContain('height: 100px')
   })
 
   it('ma szerokość z układu', () => {

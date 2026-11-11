@@ -29,6 +29,7 @@ describe('toFlow', () => {
     expect(flowPerson.data).toEqual({
       view: personNodeView(data.persons[0]!),
       width: person.width,
+      height: person.height,
       highlight: undefined,
     })
     expect(flowPerson.position).toEqual({ x: person.x, y: person.y })

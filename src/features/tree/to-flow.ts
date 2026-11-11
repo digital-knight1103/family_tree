@@ -12,6 +12,7 @@ export interface ElkEdgeData {
 export interface PersonNodeData {
   view: PersonNodeView
   width: number
+  height: number
   highlight: NodeHighlight
   photoUrl?: string
 }
@@ -45,6 +46,7 @@ export function toFlow(
       ? {
           view: personNodeView(person),
           width: node.width,
+          height: node.height,
           highlight: highlightOf(person.id),
           ...(url ? { photoUrl: url } : {}),
         }

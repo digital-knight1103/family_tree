@@ -1,18 +1,19 @@
 import { ref, watch, type Ref } from 'vue'
 import type { FamilyData } from '@/domain/schema'
 import { buildTreeGraph, layoutTree, type TreeLayout } from '@/domain/tree-layout'
-import { personNodeWidth } from './node-width'
+import { personNodeSize } from './node-size'
 import { personNodeView } from './person-node-view'
 
 export type LayoutFn = (data: FamilyData) => Promise<TreeLayout>
 
 const defaultLayout: LayoutFn = (data) => {
-  const persons = new Map(data.persons.map((person) => [person.id, person]))
-  const personWidth = (personId: string) => {
-    const person = persons.get(personId)
-    return person ? personNodeWidth(personNodeView(person)) : 0
-  }
-  return layoutTree(buildTreeGraph(data), { personWidth })
+  const sizes = new Map(
+    data.persons.map((person) => [person.id, personNodeSize(personNodeView(person))]),
+  )
+  return layoutTree(buildTreeGraph(data), {
+    personWidth: (personId) => sizes.get(personId)?.width ?? 0,
+    personHeight: (personId) => sizes.get(personId)?.height ?? 0,
+  })
 }
 
 /** The newest request wins; the previous layout stays visible while a new one is computed. */

@@ -2,7 +2,9 @@
 import { computed } from 'vue'
 import { PERSON_NODE } from '@/domain/tree-layout'
 import type { RelativeKind } from '@/domain/family-edits'
+import { MapPin } from '@lucide/vue'
 import type { NodeHighlight, RelativeGroup } from './highlight'
+import { nodeTextWidth } from './node-size'
 import type { PersonNodeView } from './person-node-view'
 
 const props = withDefaults(
@@ -12,9 +14,16 @@ const props = withDefaults(
     selected: boolean
     editable?: boolean
     width?: number
+    height?: number
     highlight?: NodeHighlight
   }>(),
-  { photoUrl: undefined, editable: false, width: PERSON_NODE.width, highlight: undefined },
+  {
+    photoUrl: undefined,
+    editable: false,
+    width: PERSON_NODE.width,
+    height: PERSON_NODE.height,
+    highlight: undefined,
+  },
 )
 defineEmits<{ add: [kind: RelativeKind] }>()
 
@@ -73,7 +82,7 @@ const ADD_BUTTONS: Array<{ kind: RelativeKind; label: string; text: string; posi
       { 'border-dashed': view.unknown },
       highlight === 'dimmed' ? 'opacity-40' : view.unknown ? 'opacity-70' : '',
     ]"
-    :style="{ width: `${width}px`, height: `${PERSON_NODE.height}px` }"
+    :style="{ width: `${width}px`, height: `${height}px` }"
   >
     <img
       v-if="photoUrl"
@@ -88,7 +97,7 @@ const ADD_BUTTONS: Array<{ kind: RelativeKind; label: string; text: string; posi
     >
       {{ view.initials }}
     </span>
-    <div class="flex min-w-0 flex-col">
+    <div class="flex min-w-0 flex-col" :style="{ width: `${nodeTextWidth(width)}px` }">
       <span v-if="view.nameLine" class="whitespace-nowrap text-sm font-medium">{{
         view.nameLine
       }}</span>
@@ -96,6 +105,14 @@ const ADD_BUTTONS: Array<{ kind: RelativeKind; label: string; text: string; posi
       <span v-if="view.dates" class="whitespace-nowrap text-xs text-muted-foreground">{{
         view.dates
       }}</span>
+      <span
+        v-if="view.birthPlace"
+        data-testid="birth-place"
+        class="flex items-start gap-1 text-[11px] leading-[14px] text-muted-foreground"
+      >
+        <MapPin aria-hidden="true" class="mt-px size-3 shrink-0" />
+        <span class="min-w-0 [overflow-wrap:anywhere]">{{ view.birthPlace }}</span>
+      </span>
     </div>
     <span
       v-if="view.unconfirmed"
