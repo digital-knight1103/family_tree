@@ -51,10 +51,9 @@ describe('ReviewList', () => {
     expect(usePanelStore().view).toEqual({ kind: 'review' })
   })
 
-  it('kliknięcie już zaznaczonej osoby przełącza panel na kartę z powrotem do listy', async () => {
+  it('kliknięcie pozycji przełącza panel na kartę z powrotem do listy', async () => {
     const { list } = mountBoth(family())
     const panel = usePanelStore()
-    useSelectionStore().select('p_stefan')
     panel.openReview()
     await list.get('[data-testid="review-item"]').trigger('click')
     expect(panel.view).toEqual({ kind: 'card', personId: 'p_stefan' })

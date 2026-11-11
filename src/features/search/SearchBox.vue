@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core'
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { Input } from '@/components/ui/input'
 import { useFamilyStore } from '@/stores/family'
 import { usePanelStore } from '@/stores/panel'
@@ -39,6 +39,9 @@ function move(step: number) {
   if (count === 0) return
   open.value = true
   activeIndex.value = (activeIndex.value + step + count) % count
+  void nextTick(() =>
+    document.getElementById(optionId(activeIndex.value))?.scrollIntoView?.({ block: 'nearest' }),
+  )
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -82,7 +85,7 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
       aria-label="Szukaj osoby"
       aria-autocomplete="list"
       :aria-controls="LISTBOX_ID"
-      :aria-expanded="showList"
+      :aria-expanded="showList && results.length > 0"
       :aria-activedescendant="showList && results.length > 0 ? optionId(activeIndex) : undefined"
       placeholder="Szukaj osoby… (/)"
       autocomplete="off"
@@ -91,7 +94,7 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
       @blur="open = false"
     />
     <ul
-      v-if="showList"
+      v-if="showList && results.length > 0"
       :id="LISTBOX_ID"
       role="listbox"
       aria-label="Wyniki wyszukiwania"
@@ -110,9 +113,14 @@ useEventListener(document, 'keydown', (event: KeyboardEvent) => {
         <span>{{ result.displayName }}</span>
         <span class="shrink-0 text-xs text-muted-foreground">{{ result.lifeSpan }}</span>
       </li>
-      <li v-if="results.length === 0" class="px-2 py-1.5 text-sm text-muted-foreground">
-        Brak wyników
-      </li>
     </ul>
+    <p
+      v-else-if="showList"
+      role="status"
+      data-testid="search-empty"
+      class="absolute top-full right-0 left-0 z-50 mt-1 rounded-lg border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-md"
+    >
+      Brak wyników
+    </p>
   </div>
 </template>

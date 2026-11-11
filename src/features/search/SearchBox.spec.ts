@@ -69,7 +69,8 @@ describe('SearchBox', () => {
   it('pokazuje „Brak wyników”', async () => {
     const w = mountBox()
     await field(w).setValue('kowalski')
-    expect(w.get('[role="listbox"]').text()).toBe('Brak wyników')
+    expect(w.find('[role="listbox"]').exists()).toBe(false)
+    expect(w.get('[role="status"]').text()).toBe('Brak wyników')
   })
 
   it('Escape zamyka listę i czyści pole', async () => {

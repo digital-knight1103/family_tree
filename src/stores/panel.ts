@@ -61,7 +61,9 @@ export const usePanelStore = defineStore('panel', () => {
     fromReview.value = opts?.fromReview ?? false
   }
 
+  /** Clears the selection first, so the tree is not dimmed behind the list and a node click opens its card. */
   function openReview() {
+    selection.select(null)
     mode.value = { kind: 'review' }
     fromReview.value = false
   }

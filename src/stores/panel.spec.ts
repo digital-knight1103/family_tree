@@ -59,7 +59,7 @@ describe('usePanelStore', () => {
     expect(panel.view).toEqual({ kind: 'card', personId: 'p_1' })
   })
 
-  it('openCard z listy dla już zaznaczonej osoby pokazuje kartę', () => {
+  it('openCard z listy pokazuje kartę i pozwala wrócić', () => {
     const selection = useSelectionStore()
     selection.select('p_1')
     const panel = usePanelStore()
@@ -86,6 +86,17 @@ describe('usePanelStore', () => {
     panel.openCard('p_1', { fromReview: true })
     panel.openCard('p_1')
     expect(panel.canReturnToReview).toBe(false)
+  })
+
+  it('openReview zdejmuje zaznaczenie, więc klik osoby w drzewie pokazuje jej kartę', () => {
+    const selection = useSelectionStore()
+    selection.select('p_1')
+    const panel = usePanelStore()
+    panel.openReview()
+    expect(selection.selectedPersonId).toBeNull()
+    expect(panel.view).toEqual({ kind: 'review' })
+    selection.select('p_1')
+    expect(panel.view).toEqual({ kind: 'card', personId: 'p_1' })
   })
 
   it('close zamyka panel także z listy', () => {
