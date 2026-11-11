@@ -56,6 +56,49 @@ describe('personNodeView', () => {
     expect(view.initials).toBe('J')
   })
 
+  describe('linie węzła', () => {
+    it('imiona w pierwszej linii, nazwisko z nazwiskiem rodowym w drugiej', () => {
+      const view = personNodeView(
+        person({ givenNames: 'Anna Maria', surname: 'Nowak', maidenName: 'Lis', sex: 'female' }),
+      )
+      expect([view.nameLine, view.surnameLine]).toEqual(['Anna Maria', 'Nowak z d. Lis'])
+      expect(personNodeView(person({ surname: '', maidenName: 'Lis' })).surnameLine).toBe(
+        'z d. Lis',
+      )
+    })
+
+    it('osoba nieznana ma etykietę w pierwszej linii i pustą drugą', () => {
+      const view = personNodeView(person({ givenNames: '', surname: '' }))
+      expect([view.nameLine, view.surnameLine]).toEqual(['Nieznany', ''])
+    })
+
+    it.each([
+      [
+        { year: 1990, month: 3, day: 12 },
+        { year: 2020, month: 11, day: 5 },
+        '12.03.1990 – 05.11.2020',
+      ],
+      [{ year: 1890, qualifier: 'about' as const }, undefined, 'ok. 1890 – ?'],
+      [{ year: 1921, month: 3 }, { year: 1980 }, '03.1921 – 1980'],
+      [undefined, { year: 1950, qualifier: 'before' as const }, '? – przed 1950'],
+    ])('daty w krótkim formacie: %o, %o → %s', (birth, death, expected) => {
+      const view = personNodeView(
+        person({
+          ...(birth ? { birth: { date: birth } } : {}),
+          ...(death ? { death: { date: death } } : {}),
+        }),
+      )
+      expect(view.dates).toBe(expected)
+    })
+
+    it('osoba żyjąca z datą urodzenia ma samą datę urodzenia', () => {
+      const view = personNodeView(
+        person({ living: true, birth: { date: { year: 1990, month: 3, day: 12 } } }),
+      )
+      expect(view.dates).toBe('12.03.1990')
+    })
+  })
+
   it('zaznacza fakty do potwierdzenia', () => {
     expect(
       personNodeView(person({ birth: { date: { year: 1890 }, unconfirmed: true } })).unconfirmed,

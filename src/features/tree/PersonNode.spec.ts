@@ -7,6 +7,9 @@ const view: PersonNodeView = {
   personId: 'p_a',
   displayName: 'Jan Kowalczyk',
   lifeSpan: '1890 – 1958',
+  nameLine: 'Jan',
+  surnameLine: 'Kowalczyk',
+  dates: '12.03.1890 – 1958',
   maidenLine: '',
   initials: 'JK',
   sex: 'male',
@@ -33,23 +36,49 @@ function mountNode(
 }
 
 describe('PersonNode', () => {
-  it('pokazuje imię, lata i inicjały bez zdjęcia', () => {
+  it('pokazuje imiona, nazwisko i pełne daty w osobnych liniach, bez obcinania', () => {
     const wrapper = mountNode()
     expect(wrapper.get('[data-testid="person-node"]').attributes('data-person-id')).toBe('p_a')
-    expect(wrapper.text()).toContain('Jan Kowalczyk')
-    expect(wrapper.text()).toContain('1890 – 1958')
+    const lines = wrapper.findAll('.flex-col > span').map((line) => line.text())
+    expect(lines).toEqual(['Jan', 'Kowalczyk', '12.03.1890 – 1958'])
+    expect(wrapper.html()).not.toContain('truncate')
     expect(wrapper.text()).toContain('JK')
     expect(wrapper.find('img').exists()).toBe(false)
+  })
+
+  it('ma szerokość z układu', () => {
+    const node = mount(PersonNode, { props: { view, selected: false, width: 260 } })
+    expect(node.get('[data-testid="person-node"]').attributes('style')).toContain('width: 260px')
+  })
+
+  it.each([
+    ['parent', 'bg-violet-50'],
+    ['sibling', 'bg-emerald-50'],
+    ['partner', 'bg-amber-50'],
+    ['child', 'bg-cyan-50'],
+  ] as const)('grupa %s ma własne tło', (highlight, background) => {
+    const node = mount(PersonNode, { props: { view, selected: false, highlight } })
+    expect(node.get('[data-testid="person-node"]').classes()).toContain(background)
+  })
+
+  it('przygaszona osoba jest półprzezroczysta, bez podświetlenia wygląda zwyczajnie', () => {
+    const dimmed = mount(PersonNode, { props: { view, selected: false, highlight: 'dimmed' } })
+    expect(dimmed.get('[data-testid="person-node"]').classes()).toContain('opacity-40')
+    const plain = mountNode().get('[data-testid="person-node"]').classes()
+    expect(plain).toContain('bg-card')
+    expect(plain).not.toContain('opacity-40')
+  })
+
+  it('pokazuje linię z nazwiskiem rodowym', () => {
+    expect(mountNode({ view: { surnameLine: 'Kowalczyk z d. Lis' } }).text()).toContain(
+      'Kowalczyk z d. Lis',
+    )
   })
 
   it('pokazuje zdjęcie z alt równym nazwie', () => {
     const img = mountNode({ photoUrl: '/__data/photos/a.webp' }).get('img')
     expect(img.attributes('src')).toBe('/__data/photos/a.webp')
     expect(img.attributes('alt')).toBe('Jan Kowalczyk')
-  })
-
-  it('pokazuje linię z nazwiskiem rodowym', () => {
-    expect(mountNode({ view: { maidenLine: 'z d. Lis' } }).text()).toContain('z d. Lis')
   })
 
   it('pokazuje plakietkę tylko przy faktach do potwierdzenia', () => {

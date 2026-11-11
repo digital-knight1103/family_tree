@@ -9,8 +9,8 @@ export function useTreeNavigation() {
     const node = findNode(`person:${personId}`)
     if (!node) return false
     void setCenter(
-      node.position.x + PERSON_NODE.width / 2,
-      node.position.y + PERSON_NODE.height / 2,
+      node.position.x + (node.dimensions.width || PERSON_NODE.width) / 2,
+      node.position.y + (node.dimensions.height || PERSON_NODE.height) / 2,
       { zoom: 1 },
     )
     return true

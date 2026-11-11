@@ -26,7 +26,11 @@ describe('toFlow', () => {
     const person = layout.nodes.find((n) => n.id === 'person:p_a')!
     const flowPerson = flow.nodes.find((n) => n.id === 'person:p_a')!
     expect(flowPerson.type).toBe('person')
-    expect(flowPerson.data).toEqual({ view: personNodeView(data.persons[0]!) })
+    expect(flowPerson.data).toEqual({
+      view: personNodeView(data.persons[0]!),
+      width: person.width,
+      highlight: undefined,
+    })
     expect(flowPerson.position).toEqual({ x: person.x, y: person.y })
     expect(flow.nodes.filter((n) => n.type === 'union')).toHaveLength(
       layout.nodes.filter((n) => n.kind === 'union').length,
@@ -55,5 +59,44 @@ describe('toFlow zdjęcia', () => {
 
     const empty = toFlow(layout, data, () => undefined)
     expect(empty.nodes.find((n) => n.id === 'person:p_a')!.data).not.toHaveProperty('photoUrl')
+  })
+})
+
+describe('toFlow podświetlenie', () => {
+  const data = buildFamily({
+    persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_c' }, { id: 'p_x' }, { id: 'p_y' }],
+    parentChild: [
+      ['p_a', 'p_c'],
+      ['p_b', 'p_c'],
+    ],
+    unions: [
+      ['p_a', 'p_b'],
+      ['p_x', 'p_y'],
+    ],
+  })
+
+  it('bez zaznaczenia nic nie jest podświetlone ani przygaszone', async () => {
+    const flow = toFlow(await layoutTree(buildTreeGraph(data)), data, () => undefined)
+    expect(flow.nodes.every((n) => !n.data.highlight && !n.data.dimmed)).toBe(true)
+    expect(flow.edges.every((e) => !e.data!.dimmed)).toBe(true)
+  })
+
+  it('najbliżsi dostają grupę, reszta jest przygaszona', async () => {
+    const layout = await layoutTree(buildTreeGraph(data))
+    const flow = toFlow(layout, data, () => undefined, 'p_c')
+    const highlight = (id: string) =>
+      flow.nodes.find((n) => n.id === `person:${id}`)!.data.highlight
+    expect(['p_a', 'p_b', 'p_c', 'p_x'].map(highlight)).toEqual([
+      'parent',
+      'parent',
+      undefined,
+      'dimmed',
+    ])
+    const unions = flow.nodes.filter((n) => n.type === 'union')
+    expect(unions.map((n) => n.data.dimmed).sort()).toEqual([false, true])
+    const brightEdges = flow.edges.filter((e) => !e.data!.dimmed).map((e) => e.source)
+    expect(brightEdges.sort()).toEqual(
+      ['person:p_a', 'person:p_b', unions.find((n) => !n.data.dimmed)!.id].sort(),
+    )
   })
 })

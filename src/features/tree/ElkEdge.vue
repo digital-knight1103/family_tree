@@ -11,5 +11,5 @@ const path = computed(() =>
 </script>
 
 <template>
-  <BaseEdge :id="id" :path="path" />
+  <BaseEdge :id="id" :path="path" :style="data?.dimmed ? { opacity: 0.25 } : undefined" />
 </template>

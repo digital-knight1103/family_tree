@@ -1,10 +1,35 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { PERSON_NODE } from '@/domain/tree-layout'
 import type { RelativeKind } from '@/domain/family-edits'
+import type { NodeHighlight, RelativeGroup } from './highlight'
 import type { PersonNodeView } from './person-node-view'
 
-defineProps<{ view: PersonNodeView; photoUrl?: string; selected: boolean; editable?: boolean }>()
+const props = withDefaults(
+  defineProps<{
+    view: PersonNodeView
+    photoUrl?: string
+    selected: boolean
+    editable?: boolean
+    width?: number
+    highlight?: NodeHighlight
+  }>(),
+  { photoUrl: undefined, editable: false, width: PERSON_NODE.width, highlight: undefined },
+)
 defineEmits<{ add: [kind: RelativeKind] }>()
+
+const GROUP_BACKGROUNDS: Record<RelativeGroup, string> = {
+  parent: 'bg-violet-50 dark:bg-violet-950/50',
+  sibling: 'bg-emerald-50 dark:bg-emerald-950/50',
+  partner: 'bg-amber-50 dark:bg-amber-950/50',
+  child: 'bg-cyan-50 dark:bg-cyan-950/50',
+}
+
+const background = computed(() => {
+  const group = props.highlight
+  if (group && group !== 'dimmed') return GROUP_BACKGROUNDS[group]
+  return props.view.unknown ? 'bg-muted/50' : 'bg-card'
+})
 
 const ADD_BUTTONS: Array<{ kind: RelativeKind; label: string; text: string; position: string }> = [
   {
@@ -41,9 +66,14 @@ const ADD_BUTTONS: Array<{ kind: RelativeKind; label: string; text: string; posi
     :data-sex="view.sex"
     :data-unknown="view.unknown ? '' : undefined"
     :data-selected="selected ? 'true' : 'false'"
-    class="relative flex items-center gap-2 rounded-md border border-l-4 bg-card px-2 text-card-foreground data-[selected=true]:ring-2 data-[selected=true]:ring-ring data-[sex=female]:border-l-rose-400 data-[sex=male]:border-l-sky-500 data-[sex=unknown]:border-l-muted-foreground"
-    :class="{ 'border-dashed bg-muted/50 opacity-70': view.unknown }"
-    :style="{ width: `${PERSON_NODE.width}px`, height: `${PERSON_NODE.height}px` }"
+    :data-highlight="highlight"
+    class="relative flex items-center gap-2 rounded-md border border-l-4 px-2 text-card-foreground transition-opacity data-[selected=true]:ring-2 data-[selected=true]:ring-ring data-[sex=female]:border-l-rose-400 data-[sex=male]:border-l-sky-500 data-[sex=unknown]:border-l-muted-foreground"
+    :class="[
+      background,
+      { 'border-dashed': view.unknown },
+      highlight === 'dimmed' ? 'opacity-40' : view.unknown ? 'opacity-70' : '',
+    ]"
+    :style="{ width: `${width}px`, height: `${PERSON_NODE.height}px` }"
   >
     <img
       v-if="photoUrl"
@@ -59,11 +89,13 @@ const ADD_BUTTONS: Array<{ kind: RelativeKind; label: string; text: string; posi
       {{ view.initials }}
     </span>
     <div class="flex min-w-0 flex-col">
-      <span class="truncate text-sm font-medium">{{ view.displayName }}</span>
-      <span v-if="view.maidenLine" class="truncate text-xs text-muted-foreground">{{
-        view.maidenLine
+      <span v-if="view.nameLine" class="whitespace-nowrap text-sm font-medium">{{
+        view.nameLine
       }}</span>
-      <span class="truncate text-xs text-muted-foreground">{{ view.lifeSpan }}</span>
+      <span v-if="view.surnameLine" class="whitespace-nowrap text-sm">{{ view.surnameLine }}</span>
+      <span v-if="view.dates" class="whitespace-nowrap text-xs text-muted-foreground">{{
+        view.dates
+      }}</span>
     </div>
     <span
       v-if="view.unconfirmed"

@@ -24,12 +24,14 @@ const nodeTypes = { union: markRaw(UnionNode) }
 const edgeTypes = { elk: markRaw(ElkEdge) }
 
 const photos = usePhotoStore()
+const selection = useSelectionStore()
 const { layout, error } = useTreeLayout(toRef(props, 'data'))
 const flow = computed(() =>
-  layout.value ? toFlow(layout.value, props.data, photos.urlFor) : { nodes: [], edges: [] },
+  layout.value
+    ? toFlow(layout.value, props.data, photos.urlFor, selection.selectedPersonId)
+    : { nodes: [], edges: [] },
 )
 
-const selection = useSelectionStore()
 const { centerOnPerson, fitAll } = useTreeNavigation()
 const { nodes, dimensions, onNodesInitialized, onNodeClick, onPaneClick } = useVueFlow(FLOW_ID)
 
@@ -94,6 +96,8 @@ watch(
           v-if="nodeData.view"
           :view="nodeData.view"
           :photo-url="nodeData.photoUrl"
+          :width="nodeData.width"
+          :highlight="nodeData.highlight"
           :selected="nodeData.view.personId === selection.selectedPersonId"
           :editable="editable"
           @add="(kind) => $emit('add', nodeData.view.personId, kind)"
