@@ -2,6 +2,7 @@ export { assignGenerations } from './generations'
 export { buildTreeGraph, type TreeEdge, type TreeGraph, type TreeNode } from './graph'
 export {
   layoutTree,
+  type LayoutOptions,
   PERSON_NODE,
   UNION_NODE,
   type Point,

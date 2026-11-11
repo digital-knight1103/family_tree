@@ -9,6 +9,8 @@ export type TreeNode =
       kind: 'union'
       unionId: string | null
       partnerIds: [string, string]
+      /** Sort key of the union start date (`genDateSortKey`), infinite when unknown. */
+      startKey: number
       generation: number
     }
 
@@ -49,12 +51,19 @@ export function buildTreeGraph(data: FamilyData): TreeGraph {
   const pairKey = (a: string, b: string) => `${a}+${b}`
   const sortedPair = (a: string, b: string): [string, string] => (a < b ? [a, b] : [b, a])
 
-  const addUnionNode = (id: string, unionId: string | null, a: string, b: string): UnionNode => {
+  const addUnionNode = (
+    id: string,
+    unionId: string | null,
+    a: string,
+    b: string,
+    startKey = Number.POSITIVE_INFINITY,
+  ): UnionNode => {
     const node: UnionNode = {
       id,
       kind: 'union',
       unionId,
       partnerIds: sortedPair(a, b),
+      startKey,
       generation: Math.max(generations.get(a)!, generations.get(b)!),
     }
     unionNodes.set(id, node)
@@ -62,12 +71,12 @@ export function buildTreeGraph(data: FamilyData): TreeGraph {
   }
 
   const unions = [...data.unions].sort((a, b) => compare(a.id, b.id))
-  for (const { id, partnerIds } of unions) {
+  for (const { id, partnerIds, start } of unions) {
     const [a, b] = sortedPair(...partnerIds)
     if (!rank.has(a) || !rank.has(b)) continue
     const key = pairKey(a, b)
     // The union with the smallest id represents the pair.
-    const node = addUnionNode(`union:${id}`, id, a, b)
+    const node = addUnionNode(`union:${id}`, id, a, b, genDateSortKey(start?.date))
     if (!unionByPair.has(key)) unionByPair.set(key, node)
   }
 

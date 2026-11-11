@@ -14,12 +14,15 @@ function compare(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0
 }
 
+const compareNumbers = (a: number, b: number) => (a < b ? -1 : a > b ? 1 : 0)
+
 const mean = (values: number[]) => values.reduce((sum, v) => sum + v, 0) / values.length
 
 /**
- * Orders the nodes of every row left to right, so that partners stand next to each other,
- * siblings follow their birth order and lines cross as little as possible (barycentre sweeps over
- * blocks of partners). Connected groups never interleave: each row holds the main tree first,
+ * Orders the nodes of every row left to right, so that partners stand next to each other (the
+ * partner with parents in the tree on the left, see `anchoredOrder`), siblings follow their birth
+ * order and lines cross as little as possible (barycentre sweeps over blocks of partners).
+ * Connected groups never interleave: each row holds the main tree first,
  * then the smaller groups in the order of `connectedComponents`.
  * Returns the graph nodes in that order; the layout engine keeps it.
  */
@@ -37,7 +40,9 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
     childrenOf.set(edge.source, [...(childrenOf.get(edge.source) ?? []), edge.target])
     familiesOf.set(edge.target, [...(familiesOf.get(edge.target) ?? []), edge.source])
   }
-  const unions = graph.nodes.filter((n) => n.kind === 'union')
+  const unions = graph.nodes.filter(
+    (n): n is Extract<TreeNode, { kind: 'union' }> => n.kind === 'union',
+  )
   /** The people heading a family: both partners of a union node, or the single parent. */
   const parentsIn = (familyId: string) => {
     const node = byId.get(familyId)!
@@ -55,6 +60,10 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
     }
   }
 
+  const hasParents = (id: string) => familiesOf.has(id)
+  /** Blocks whose left-to-right order is fixed by `anchoredOrder`; the sweeps never flip them. */
+  const fixed = new Set<string[]>()
+
   const rows = new Map<number, Row>()
   for (const node of graph.nodes) {
     if (node.kind !== 'person') continue
@@ -66,12 +75,18 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
 
   function partnerBlocks(order: string[], generation: number): string[][] {
     const links = new Map<string, string[]>(order.map((id) => [id, []]))
+    const startOf = new Map<string, number>()
+    const pair = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`)
     for (const union of unions) {
       const [a, b] = parentsIn(union.id)
       if (!a || !b || a === b) continue
       if (generationOf(a) !== generation || generationOf(b) !== generation) continue
-      links.get(a)!.push(b)
-      links.get(b)!.push(a)
+      const key = pair(a, b)
+      if (!startOf.has(key)) {
+        links.get(a)!.push(b)
+        links.get(b)!.push(a)
+      }
+      startOf.set(key, Math.min(startOf.get(key) ?? Number.POSITIVE_INFINITY, union.startKey))
     }
     for (const list of links.values()) list.sort((x, y) => rank.get(x)! - rank.get(y)!)
     const seen = new Set<string>()
@@ -102,9 +117,53 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
         for (const next of links.get(id)!) if (!visited.has(next)) visit(next)
       }
       visit(first)
-      blocks.push(walk)
+      const anchored = anchoredOrder(component)
+      if (anchored) fixed.add(anchored)
+      blocks.push(anchored ?? walk)
     }
     return blocks
+
+    /**
+     * A block in which someone with parents in the tree has a partner without them: each such
+     * partner stands to the right of the person with parents (a person with several partners has
+     * all of them on the right, in the order of the unions, then by birth). Partners on the same
+     * footing (both with parents or both without) take the free side, the left one first.
+     * Returns `undefined` for other blocks, which the sweeps orient freely.
+     */
+    function anchoredOrder(members: string[]): string[] | undefined {
+      const root = members.find(
+        (id) => hasParents(id) && links.get(id)!.some((partner) => !hasParents(partner)),
+      )
+      if (!root) return undefined
+      const left = new Map<string, string[]>(members.map((id) => [id, []]))
+      const right = new Map<string, string[]>(members.map((id) => [id, []]))
+      const queue = [root]
+      const placed = new Set(queue)
+      for (let i = 0; i < queue.length; i++) {
+        const id = queue[i]!
+        const partners = links
+          .get(id)!
+          .filter((partner) => !placed.has(partner))
+          .sort(
+            (x, y) =>
+              compareNumbers(startOf.get(pair(id, x))!, startOf.get(pair(id, y))!) ||
+              rank.get(x)! - rank.get(y)!,
+          )
+        for (const partner of partners) {
+          placed.add(partner)
+          queue.push(partner)
+          const toRight =
+            hasParents(id) !== hasParents(partner) ? hasParents(id) : left.get(id)!.length > 0
+          ;(toRight ? right : left).get(id)!.push(partner)
+        }
+      }
+      const render = (id: string): string[] => [
+        ...[...left.get(id)!].reverse().flatMap(render),
+        id,
+        ...right.get(id)!.flatMap(render),
+      ]
+      return render(root)
+    }
   }
 
   const position = new Map<string, number>()
@@ -129,16 +188,20 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
   function reorder(row: Row, keyOf: (id: string) => number | undefined) {
     const keyed = row.blocks.map((block) => {
       const current = block.map((id) => position.get(id)!)
-      let members = current[0]! <= current[current.length - 1]! ? block : [...block].reverse()
-      const keys = members.map(keyOf)
-      let trend = 0
-      for (let i = 0; i < keys.length; i++) {
-        for (let j = i + 1; j < keys.length; j++) {
-          if (keys[i] !== undefined && keys[j] !== undefined)
-            trend += Math.sign(keys[j]! - keys[i]!)
+      let members = block
+      if (!fixed.has(block)) {
+        if (current[0]! > current[current.length - 1]!) members = [...block].reverse()
+        const keys = members.map(keyOf)
+        let trend = 0
+        for (let i = 0; i < keys.length; i++) {
+          for (let j = i + 1; j < keys.length; j++) {
+            if (keys[i] !== undefined && keys[j] !== undefined)
+              trend += Math.sign(keys[j]! - keys[i]!)
+          }
         }
+        if (trend < 0) members = [...members].reverse()
       }
-      if (trend < 0) members = [...members].reverse()
+      const keys = members.map(keyOf)
       const known = keys.filter((k): k is number => k !== undefined)
       return {
         members,

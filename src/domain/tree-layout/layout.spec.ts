@@ -7,7 +7,7 @@ import { buildFamily } from '@tests/fixtures/build-family'
 import { buildLargeFamily } from '@tests/fixtures/large-family'
 import { centerX, countCrossings, segments } from '@tests/fixtures/layout-metrics'
 import { buildTreeGraph } from './graph'
-import { layoutTree, type PositionedNode, type TreeLayout } from './layout'
+import { layoutTree, PERSON_NODE, type PositionedNode, type TreeLayout } from './layout'
 
 const demo = familyDataSchema.parse(seed)
 const layout = (data: FamilyData) => layoutTree(buildTreeGraph(data))
@@ -278,5 +278,292 @@ describe('layoutTree (zmiany danych i wydajność)', () => {
     expect(elapsed, `układ ${large.persons.length} osób: ${Math.round(elapsed)} ms`).toBeLessThan(
       3000,
     )
+  })
+})
+
+describe('layoutTree (rodzice nad środkiem dzieci, szerokość węzła)', () => {
+  /** Siblings Paweł and Sławomir with partners without parents; Sławomir's sons below. */
+  const siblings = buildFamily({
+    persons: [
+      { id: 'p_andrzej', birth: { date: { year: 1950 } } },
+      { id: 'p_halina', birth: { date: { year: 1952 } } },
+      { id: 'p_pawel', birth: { date: { year: 1975 } } },
+      { id: 'p_slawomir', birth: { date: { year: 1978 } } },
+      { id: 'p_aneta', birth: { date: { year: 1976 } } },
+      { id: 'p_patrycja', birth: { date: { year: 1980 } } },
+      { id: 'p_antoni', birth: { date: { year: 2005 } } },
+      { id: 'p_aleksander', birth: { date: { year: 2008 } } },
+    ],
+    parentChild: [
+      ['p_andrzej', 'p_pawel'],
+      ['p_halina', 'p_pawel'],
+      ['p_andrzej', 'p_slawomir'],
+      ['p_halina', 'p_slawomir'],
+      ['p_slawomir', 'p_antoni'],
+      ['p_patrycja', 'p_antoni'],
+      ['p_slawomir', 'p_aleksander'],
+      ['p_patrycja', 'p_aleksander'],
+    ],
+    unions: [
+      ['p_andrzej', 'p_halina'],
+      ['p_pawel', 'p_aneta'],
+      ['p_slawomir', 'p_patrycja'],
+    ],
+  })
+  const center = (nodes: Map<string, PositionedNode>, id: string) => centerX(nodes.get(id)!)
+  const middle = (nodes: Map<string, PositionedNode>, a: string, b: string) =>
+    (center(nodes, `person:${a}`) + center(nodes, `person:${b}`)) / 2
+  /** No node overlaps another, no line runs through a person and every line is orthogonal. */
+  const noOverlaps = (result: TreeLayout) => {
+    for (const a of result.nodes) {
+      for (const b of result.nodes) {
+        if (a.id < b.id) expect(overlaps(a, b), `${a.id} nachodzi na ${b.id}`).toBe(false)
+      }
+    }
+    const people = result.nodes.filter((n) => n.kind === 'person')
+    for (const edge of result.edges) {
+      for (const [p, q] of segments(edge)) {
+        expect(Math.abs(p.x - q.x) <= 0.5 || Math.abs(p.y - q.y) <= 0.5, edge.id).toBe(true)
+        for (const n of people) {
+          const through =
+            Math.max(p.x, q.x) > n.x + 0.5 &&
+            Math.min(p.x, q.x) < n.x + n.width - 0.5 &&
+            Math.max(p.y, q.y) > n.y + 0.5 &&
+            Math.min(p.y, q.y) < n.y + n.height - 0.5
+          expect(through, `${edge.id} przechodzi przez ${n.id}`).toBe(false)
+        }
+      }
+    }
+  }
+  const wide = (personId: string) => 200 + (personId.length % 4) * 70
+
+  it('punkt związku rodziców stoi nad środkiem rodzeństwa, a nie ich partnerów', async () => {
+    for (const options of [undefined, { personWidth: wide }]) {
+      const result = await layoutTree(buildTreeGraph(siblings), options)
+      const nodes = byId(result)
+      const row = ['pawel', 'aneta', 'slawomir', 'patrycja'].map((id) =>
+        nodes.get(`person:p_${id}`)!,
+      )
+      for (let i = 1; i < row.length; i++) expect(row[i]!.x).toBeGreaterThan(row[i - 1]!.x)
+      expect(
+        Math.abs(center(nodes, 'union:u_1') - middle(nodes, 'p_pawel', 'p_slawomir')),
+      ).toBeLessThanOrEqual(1)
+      expect(
+        Math.abs(center(nodes, 'union:u_3') - middle(nodes, 'p_antoni', 'p_aleksander')),
+      ).toBeLessThanOrEqual(1)
+      noOverlaps(result)
+    }
+  })
+
+  it('para z dwójką dzieci ma punkt związku między dziećmi', async () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_c' }, { id: 'p_d' }],
+      parentChild: [
+        ['p_a', 'p_c'],
+        ['p_b', 'p_c'],
+        ['p_a', 'p_d'],
+        ['p_b', 'p_d'],
+      ],
+      unions: [['p_a', 'p_b']],
+    })
+    const nodes = byId(await layout(data))
+    expect(Math.abs(center(nodes, 'union:u_1') - middle(nodes, 'p_c', 'p_d'))).toBeLessThanOrEqual(
+      1,
+    )
+  })
+
+  it('samotny rodzic stoi nad środkiem swoich dzieci', async () => {
+    const data = buildFamily({
+      persons: [
+        { id: 'p_matka' },
+        { id: 'p_c1', birth: { date: { year: 1990 } } },
+        { id: 'p_c2', birth: { date: { year: 1991 } } },
+        { id: 'p_c3', birth: { date: { year: 1992 } } },
+      ],
+      parentChild: [
+        ['p_matka', 'p_c1'],
+        ['p_matka', 'p_c2'],
+        ['p_matka', 'p_c3'],
+      ],
+    })
+    const result = await layout(data)
+    const nodes = byId(result)
+    expect(
+      Math.abs(center(nodes, 'person:p_matka') - middle(nodes, 'p_c1', 'p_c3')),
+    ).toBeLessThanOrEqual(1)
+    const matka = nodes.get('person:p_matka')!
+    const toMiddle = result.edges.find((e) => e.target === 'person:p_c2')!
+    // Straight down from the parent to the middle child.
+    expect(toMiddle.points.map((p) => p.y)).toEqual([
+      matka.y + matka.height,
+      nodes.get('person:p_c2')!.y,
+    ])
+    for (const p of toMiddle.points) {
+      expect(Math.abs(p.x - centerX(matka))).toBeLessThanOrEqual(0.5)
+    }
+    noOverlaps(result)
+  })
+
+  it('linia do dziecka o dwa rzędy niżej omija osoby po drodze', async () => {
+    // The aunt marries her nephew, so she stands a row below her parents.
+    const data = buildFamily({
+      persons: [
+        { id: 'p_p' },
+        { id: 'p_q' },
+        { id: 'p_a', birth: { date: { year: 1950 } } },
+        { id: 'p_z', birth: { date: { year: 1952 } } },
+        { id: 'p_s', birth: { date: { year: 1960 } } },
+        { id: 'p_w' },
+        { id: 'p_k', birth: { date: { year: 1975 } } },
+      ],
+      parentChild: [
+        ['p_p', 'p_a'],
+        ['p_q', 'p_a'],
+        ['p_p', 'p_z'],
+        ['p_q', 'p_z'],
+        ['p_p', 'p_s'],
+        ['p_q', 'p_s'],
+        ['p_a', 'p_k'],
+        ['p_w', 'p_k'],
+      ],
+      unions: [
+        ['p_p', 'p_q'],
+        ['p_a', 'p_w'],
+        ['p_s', 'p_k'],
+      ],
+    })
+    const graph = buildTreeGraph(data)
+    const generation = (id: string) => graph.nodes.find((n) => n.id === id)!.generation
+    expect(generation('person:p_s') - generation('union:u_1')).toBe(2)
+    const result = await layoutTree(graph)
+    noOverlaps(result)
+    const start = result.edges.find((e) => e.target === 'person:p_s')!.points[0]!
+    expect(Math.abs(start.x - centerX(byId(result).get('union:u_1')!))).toBeLessThanOrEqual(0.5)
+  })
+
+  it('gdy obie strony pary mają rodziców, rozkłada odchylenie po równo bez nakładania', async () => {
+    // Two only children marry: their parents need more room than the couple, so neither pair of
+    // parents can stand right above its child.
+    const data = buildFamily({
+      persons: [
+        { id: 'p_f1' },
+        { id: 'p_f2' },
+        { id: 'p_g1' },
+        { id: 'p_g2' },
+        { id: 'p_c', birth: { date: { year: 1980 } } },
+        { id: 'p_d', birth: { date: { year: 1981 } } },
+      ],
+      parentChild: [
+        ['p_f1', 'p_c'],
+        ['p_f2', 'p_c'],
+        ['p_g1', 'p_d'],
+        ['p_g2', 'p_d'],
+      ],
+      unions: [
+        ['p_f1', 'p_f2'],
+        ['p_g1', 'p_g2'],
+        ['p_c', 'p_d'],
+      ],
+    })
+    const result = await layout(data)
+    const nodes = byId(result)
+    const deviationF = Math.abs(center(nodes, 'union:u_1') - center(nodes, 'person:p_c'))
+    const deviationG = Math.abs(center(nodes, 'union:u_2') - center(nodes, 'person:p_d'))
+    // Pairs of parents stand at least 464 px apart (union to union), the couple 232 px: 116 px each.
+    expect(Math.abs(deviationF - 116)).toBeLessThanOrEqual(1)
+    expect(Math.abs(deviationG - 116)).toBeLessThanOrEqual(1)
+    noOverlaps(result)
+  })
+
+  it('osoba z dwoma partnerami: punkty obu związków między partnerami, linie ortogonalne', async () => {
+    const data = buildFamily({
+      persons: [
+        { id: 'p_ojciec' },
+        { id: 'p_matka' },
+        { id: 'p_a', birth: { date: { year: 1950 } } },
+        { id: 'p_x', birth: { date: { year: 1951 } } },
+        { id: 'p_y', birth: { date: { year: 1952 } } },
+        { id: 'p_cx', birth: { date: { year: 1975 } } },
+        { id: 'p_cy', birth: { date: { year: 1985 } } },
+      ],
+      parentChild: [
+        ['p_ojciec', 'p_a'],
+        ['p_matka', 'p_a'],
+        ['p_a', 'p_cx'],
+        ['p_x', 'p_cx'],
+        ['p_a', 'p_cy'],
+        ['p_y', 'p_cy'],
+      ],
+      unions: [
+        ['p_ojciec', 'p_matka'],
+        ['p_a', 'p_x'],
+        ['p_a', 'p_y'],
+      ],
+    })
+    const result = await layout(data)
+    const nodes = byId(result)
+    for (const [unionId, partner, child] of [
+      ['union:u_2', 'p_x', 'p_cx'],
+      ['union:u_3', 'p_y', 'p_cy'],
+    ] as const) {
+      const u = nodes.get(unionId)!
+      expect(centerX(u)).toBeGreaterThan(center(nodes, 'person:p_a'))
+      expect(centerX(u)).toBeLessThan(center(nodes, `person:${partner}`))
+      expect(Math.abs(centerX(u) - center(nodes, `person:${child}`))).toBeLessThanOrEqual(1)
+      const start = result.edges.find((e) => e.source === unionId)!.points[0]!
+      expect(Math.abs(start.x - centerX(u))).toBeLessThanOrEqual(0.5)
+      expect(Math.abs(start.y - (u.y + u.height))).toBeLessThanOrEqual(0.5)
+    }
+    // The line to the second partner runs below the first union.
+    expect(nodes.get('union:u_3')!.y).toBeGreaterThan(nodes.get('union:u_2')!.y)
+    for (const edge of result.edges) {
+      for (const [p, q] of segments(edge)) {
+        expect(Math.abs(p.x - q.x) <= 0.5 || Math.abs(p.y - q.y) <= 0.5, edge.id).toBe(true)
+      }
+      if (edge.kind === 'partner') {
+        const person = nodes.get(edge.source)!
+        expect(Math.abs(edge.points[0]!.x - centerX(person))).toBeLessThanOrEqual(0.5)
+        expect(edge.points[0]!.y).toBe(person.y + person.height)
+      }
+    }
+    noOverlaps(result)
+  })
+
+  it('szerokość osoby pochodzi z personWidth, najmniej PERSON_NODE.width', async () => {
+    const widths: Record<string, number> = { p_a: 320, p_b: 120, p_c: Number.NaN }
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_c' }, { id: 'p_d' }],
+      parentChild: [
+        ['p_a', 'p_c'],
+        ['p_b', 'p_c'],
+      ],
+      unions: [['p_a', 'p_b']],
+    })
+    const nodes = byId(
+      await layoutTree(buildTreeGraph(data), { personWidth: (id) => widths[id] ?? 0 }),
+    )
+    expect(nodes.get('person:p_a')!.width).toBe(320)
+    expect(nodes.get('person:p_b')!.width).toBe(PERSON_NODE.width)
+    expect(nodes.get('person:p_c')!.width).toBe(PERSON_NODE.width)
+    expect(nodes.get('person:p_d')!.width).toBe(PERSON_NODE.width)
+    expect(nodes.get('person:p_a')!.height).toBe(PERSON_NODE.height)
+    const plain = byId(await layout(data))
+    for (const node of plain.values()) {
+      if (node.kind === 'person') expect(node.width).toBe(PERSON_NODE.width)
+    }
+  })
+
+  it('przy różnych szerokościach na danych demo węzły nie nachodzą na siebie, a układ jest deterministyczny', async () => {
+    const options = { personWidth: wide }
+    const result = await layoutTree(buildTreeGraph(demo), options)
+    noOverlaps(result)
+    expect(countCrossings(result.edges)).toBe(0)
+    const reversed: FamilyData = {
+      ...demo,
+      persons: [...demo.persons].reverse(),
+      parentChild: [...demo.parentChild].reverse(),
+      unions: [...demo.unions].reverse(),
+    }
+    expect(await layoutTree(buildTreeGraph(reversed), options)).toEqual(result)
   })
 })
