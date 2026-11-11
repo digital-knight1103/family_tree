@@ -16,7 +16,7 @@
 
 **Odłożone z przeglądu:** skrót `/` albo `Ctrl+K` przy otwartym oknie potwierdzenia połyka klawisz; linia od innego związku rodzica do przyrodniego rodzeństwa zostaje przygaszona przy podświetleniu; dług drzewa z planu 03a pkt 1–5 i uwaga o 80 px.
 
-**Dalej:** plan 05 (faza 7: wygląd, glassmorphism, motywy, ekran powitalny, spec §6.1 i §6.9) po „dalej” od autora: plan wprost ze specyfikacji (superpowers:writing-plans), commit i push, wykonanie w trybie z CLAUDE.md od fazy 6, na koniec przegląd `git diff faza-6..HEAD` i tag `faza-7`.
+**Dalej:** plan 05 (`2026-11-11-mvp-05-look.md`): w toku, stan w jego „Stanie prac”.
 
 **Odstępstwa i decyzje:** skróty `/` i `Ctrl+K` (oba). Kliknięcie pozycji listy otwiera kartę z przyciskiem „Wróć do listy”, zamiast zostawiać listę (karta pokazuje notatki i fakty). Pole w pasku i pole łączenia w formularzu dodawania mają tę samą etykietę „Szukaj osoby”; test e2e edytora szuka pola w panelu.
 
