@@ -29,7 +29,7 @@ const items = computed(() => (family.data ? reviewView(family.data) : []))
           <span
             v-for="(reason, index) in item.reasons"
             :key="index"
-            class="block text-sm text-amber-700 dark:text-amber-300"
+            class="block text-sm text-note-foreground"
           >
             {{ reason }}
           </span>

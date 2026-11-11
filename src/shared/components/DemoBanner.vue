@@ -7,7 +7,7 @@ defineEmits<{ start: [] }>()
 <template>
   <div
     data-testid="demo-banner"
-    class="flex flex-wrap items-center justify-between gap-2 bg-amber-100 px-4 py-2 text-sm text-amber-950"
+    class="flex flex-wrap items-center justify-between gap-2 border-b border-note-border bg-note px-4 py-2 text-sm text-note-foreground"
   >
     <span>To są dane przykładowe. Zmiany nie są zapisywane.</span>
     <Button size="sm" @click="$emit('start')">Rozpocznij własne drzewo</Button>

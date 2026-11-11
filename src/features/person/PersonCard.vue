@@ -63,7 +63,7 @@ const relations = computed(() =>
         {{ factText(fact) }}
         <span
           v-if="fact.unconfirmed"
-          class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900"
+          class="ml-1 rounded bg-badge px-1.5 py-0.5 text-xs text-badge-foreground"
           >do potwierdzenia</span
         >
       </p>
@@ -97,9 +97,9 @@ const relations = computed(() =>
     <section
       v-if="view.researchNotes"
       data-testid="research-notes"
-      class="rounded-md border border-amber-300 bg-amber-50 p-3"
+      class="rounded-md border border-note-border bg-note p-3 text-note-foreground"
     >
-      <h3 class="text-sm font-medium text-amber-900">Notatki badawcze</h3>
+      <h3 class="text-sm font-medium">Notatki badawcze</h3>
       <p class="whitespace-pre-wrap text-sm">{{ view.researchNotes }}</p>
     </section>
   </article>

@@ -7,7 +7,7 @@ defineProps<NodeProps<UnionNodeData>>()
 
 <template>
   <div
-    class="size-2 rounded-full bg-slate-500 transition-opacity"
+    class="size-2 rounded-full bg-edge transition-opacity"
     :class="{ 'opacity-30': data?.dimmed }"
   />
 </template>

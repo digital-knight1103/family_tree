@@ -68,10 +68,10 @@ describe('PersonNode', () => {
   })
 
   it.each([
-    ['parent', 'bg-violet-50'],
-    ['sibling', 'bg-emerald-50'],
-    ['partner', 'bg-amber-50'],
-    ['child', 'bg-cyan-50'],
+    ['parent', 'bg-tint-parent'],
+    ['sibling', 'bg-tint-sibling'],
+    ['partner', 'bg-tint-partner'],
+    ['child', 'bg-tint-child'],
   ] as const)('grupa %s ma własne tło', (highlight, background) => {
     const node = mount(PersonNode, { props: { view, selected: false, highlight } })
     expect(node.get('[data-testid="person-node"]').classes()).toContain(background)
@@ -81,7 +81,7 @@ describe('PersonNode', () => {
     const dimmed = mount(PersonNode, { props: { view, selected: false, highlight: 'dimmed' } })
     expect(dimmed.get('[data-testid="person-node"]').classes()).toContain('opacity-40')
     const plain = mountNode().get('[data-testid="person-node"]').classes()
-    expect(plain).toContain('bg-card')
+    expect(plain).toContain('bg-glass')
     expect(plain).not.toContain('opacity-40')
   })
 

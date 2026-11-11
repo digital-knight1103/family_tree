@@ -28,16 +28,16 @@ const props = withDefaults(
 defineEmits<{ add: [kind: RelativeKind] }>()
 
 const GROUP_BACKGROUNDS: Record<RelativeGroup, string> = {
-  parent: 'bg-violet-50 dark:bg-violet-950/50',
-  sibling: 'bg-emerald-50 dark:bg-emerald-950/50',
-  partner: 'bg-amber-50 dark:bg-amber-950/50',
-  child: 'bg-cyan-50 dark:bg-cyan-950/50',
+  parent: 'bg-tint-parent',
+  sibling: 'bg-tint-sibling',
+  partner: 'bg-tint-partner',
+  child: 'bg-tint-child',
 }
 
 const background = computed(() => {
   const group = props.highlight
   if (group && group !== 'dimmed') return GROUP_BACKGROUNDS[group]
-  return props.view.unknown ? 'bg-muted/50' : 'bg-card'
+  return props.view.unknown ? 'bg-muted/60' : 'bg-glass'
 })
 
 interface AddButton {
@@ -78,7 +78,7 @@ const ADD_ROWS: Array<{ id: string; position: string; buttons: AddButton[] }> = 
     :data-unknown="view.unknown ? '' : undefined"
     :data-selected="selected ? 'true' : 'false'"
     :data-highlight="highlight"
-    class="relative flex items-center gap-2 rounded-md border border-l-4 px-2 text-card-foreground transition-opacity data-[selected=true]:ring-2 data-[selected=true]:ring-ring data-[sex=female]:border-l-rose-400 data-[sex=male]:border-l-sky-500 data-[sex=unknown]:border-l-muted-foreground"
+    class="relative flex items-center gap-2 rounded-md border border-l-4 border-glass-border px-2 text-card-foreground shadow-(--glass-shadow) backdrop-blur-md transition-opacity data-[selected=true]:ring-2 data-[selected=true]:ring-ring data-[sex=female]:border-l-sex-female data-[sex=male]:border-l-sex-male data-[sex=unknown]:border-l-muted-foreground"
     :class="[
       background,
       { 'border-dashed': view.unknown },
@@ -119,7 +119,7 @@ const ADD_ROWS: Array<{ id: string; position: string; buttons: AddButton[] }> = 
     <span
       v-if="view.unconfirmed"
       aria-label="Fakty do potwierdzenia"
-      class="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-amber-950"
+      class="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-badge text-[10px] font-bold text-badge-foreground"
       >?</span
     >
     <template v-if="selected && editable">
@@ -135,7 +135,7 @@ const ADD_ROWS: Array<{ id: string; position: string; buttons: AddButton[] }> = 
           :key="button.kind"
           type="button"
           :aria-label="button.label"
-          class="nodrag nopan flex h-6 items-center whitespace-nowrap rounded-full border bg-background px-2 text-xs text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
+          class="nodrag nopan flex h-6 items-center whitespace-nowrap rounded-full border bg-popover px-2 text-xs text-muted-foreground shadow-sm hover:bg-accent hover:text-foreground"
           @click.stop="$emit('add', button.kind)"
         >
           + {{ button.text }}

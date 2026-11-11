@@ -34,7 +34,7 @@ const photoUrl = computed(() => {
     v-if="panel.view.kind !== 'closed'"
     data-testid="side-panel"
     aria-label="Panel osoby"
-    class="w-[360px] shrink-0 overflow-y-auto border-l bg-background p-4"
+    class="glass-strong w-[360px] shrink-0 overflow-y-auto border-y-0 border-r-0 p-4"
   >
     <div class="mb-4 flex justify-between gap-2">
       <Button v-if="panel.canReturnToReview" variant="ghost" size="sm" @click="panel.openReview()">

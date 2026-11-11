@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Drzewo Rodzinne</title>
+    <script>
+      // Theme before the first paint; same rule and key as resolveTheme in src/stores/theme.ts.
+      ;(function () {
+        var stored = null
+        try {
+          stored = localStorage.getItem('drzewo-rodzinne:theme')
+        } catch (e) {}
+        var dark =
+          stored === 'dark' ||
+          (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.toggle('dark', dark)
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>
