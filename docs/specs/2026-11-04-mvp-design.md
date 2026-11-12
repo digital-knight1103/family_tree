@@ -199,7 +199,12 @@ Wymagane właściwości wizualne:
 - rodzice są wyśrodkowani nad dziećmi: środek pary (punkt związku) albo samotny rodzic stoi nad środkiem grupy swoich dzieci; gdy szersze gałęzie nie pozwalają na pełne wyśrodkowanie, układ wybiera kompromis (najmniejsze odchylenie bez nakładania się węzłów), który wykonawca pokazuje autorowi,
 - linia do dzieci wychodzi ze środka linii łączącej parę, a dziecko z jednym znanym rodzicem łączy się bezpośrednio z tym rodzicem,
 - połączenia ortogonalne, z jak najmniejszą liczbą przecięć,
-- rodzeństwo uporządkowane według daty urodzenia (klucz z 5.1),
+- rodzeństwo uporządkowane według daty urodzenia (klucz z 5.1), z wyjątkiem z reguły 2 niżej,
+- **reguły twarde bloków rodzeństwa** (wymagane, dodane 2026-11-12 po błędzie na prawdziwych danych):
+  1. rodzeństwo (dzieci tej samej pary albo tego samego samotnego rodzica) stoi w rzędzie w jednym ciągłym bloku; między rodzeństwem mogą stać tylko ich partnerzy;
+  2. para, w której oboje partnerzy mają rodziców w drzewie, stoi na styku dwóch bloków rodzeństwa: każde z partnerów na tej krawędzi swojego bloku, która jest bliżej drugiego; dla tych dwóch osób kolejność urodzenia może zostać złamana;
+  3. poziome linie rodzeństwa różnych par nigdy się nie nakładają ani nie przecinają (rozłączne przedziały x albo różna wysokość bez przecięcia);
+  4. rodzice stoją wyśrodkowani nad swoim blokiem (kompromis jak wyżej, gdy szersze gałęzie nie pozwalają),
 - układ jest **deterministyczny** (wymagane): te same dane dają ten sam obraz.
 - **Stabilność** (cel, nie kryterium akceptacji): dodanie osoby nie powinno bez potrzeby przetasowywać całego drzewa.
 
