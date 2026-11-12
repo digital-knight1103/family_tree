@@ -23,6 +23,14 @@ function factReason(name: 'birth' | 'death', fact: Fact | undefined): ReviewReas
 
 export function reviewEntries(data: FamilyData): ReviewEntry[] {
   const personIds = new Set(data.persons.map((p) => p.id))
+  const unionsByPerson = new Map<string, Union[]>()
+  const seenUnionIds = new Set<string>()
+  for (const union of data.unions) {
+    if (union.start?.unconfirmed !== true || seenUnionIds.has(union.id)) continue
+    seenUnionIds.add(union.id)
+    for (const id of union.partnerIds)
+      unionsByPerson.set(id, [...(unionsByPerson.get(id) ?? []), union])
+  }
   const entries: ReviewEntry[] = []
   for (const person of data.persons) {
     const reasons: ReviewReason[] = []
@@ -30,10 +38,8 @@ export function reviewEntries(data: FamilyData): ReviewEntry[] {
     for (const reason of [factReason('birth', person.birth), factReason('death', person.death)]) {
       if (reason) reasons.push(reason)
     }
-    for (const union of data.unions) {
-      if (union.start?.unconfirmed !== true) continue
+    for (const union of unionsByPerson.get(person.id) ?? []) {
       const [first, second] = union.partnerIds
-      if (person.id !== first && person.id !== second) continue
       const partnerId = person.id === first ? second : first
       if (!personIds.has(partnerId)) continue
       reasons.push({ kind: 'union', unionId: union.id, partnerId, unionType: union.type })

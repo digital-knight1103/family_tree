@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { buildFamily, type FamilySpec } from '@tests/fixtures/build-family'
-import { canAddParent, canAddUnion, checkRelationRules } from '@/domain/relation-rules'
+import {
+  canAddParent,
+  canAddUnion,
+  checkRelationRules,
+  hasParentEdge,
+} from '@/domain/relation-rules'
 import type { FamilyData } from '@/domain/schema'
 
 const persons = (...ids: string[]) => ids.map((id) => ({ id }))
@@ -178,5 +183,13 @@ describe('canAddUnion', () => {
 
   it('pozwala na nowy związek', () => {
     expect(canAddUnion(family, 'p_D', 'p_G')).toEqual({ ok: true })
+  })
+})
+
+describe('hasParentEdge', () => {
+  it('matches the edge in its own direction only', () => {
+    expect(hasParentEdge(family, 'p_A', 'p_C')).toBe(true)
+    expect(hasParentEdge(family, 'p_C', 'p_A')).toBe(false)
+    expect(hasParentEdge(family, 'p_A', 'p_F')).toBe(false)
   })
 })

@@ -18,7 +18,7 @@ import {
   type IdSource,
   type NewPersonInput,
 } from './family-edits'
-import { checkRelationRules } from './relation-rules'
+import { checkRelationRules, SIBLING_ALREADY_LINKED_MESSAGE } from './relation-rules'
 import { validateFamilyData } from './validate'
 
 const counterSource = (): IdSource => {
@@ -120,6 +120,19 @@ describe('child', () => {
     const id2 = addRelative(alone, 'p_a', 'child', newPerson('X'), { coParent: { kind: 'none' } })
     expect(alone.parentChild).toEqual([{ parentId: 'p_a', childId: id2, type: 'biological' }])
     expect(checkRelationRules(alone)).toEqual([])
+  })
+
+  it('gives an existing child only the anchor edge when the co-parent is none', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_c' }, { id: 'p_k' }],
+      unions: [
+        ['p_a', 'p_b'],
+        ['p_a', 'p_c'],
+      ],
+    })
+    const existing = { kind: 'existing', personId: 'p_k' } as const
+    addRelative(data, 'p_a', 'child', existing, { coParent: { kind: 'none' } })
+    expect(data.parentChild).toEqual([{ parentId: 'p_a', childId: 'p_k', type: 'biological' }])
   })
 
   it('rejects a union that does not belong to the anchor', () => {
@@ -337,10 +350,29 @@ describe('sibling', () => {
     const existing = { kind: 'existing', personId: 'p_s' } as const
     expect(canAddRelative(data, 'p_a', 'sibling', existing)).toEqual({
       ok: false,
-      reason: DUPLICATE,
+      reason: SIBLING_ALREADY_LINKED_MESSAGE,
     })
-    expect(() => addRelative(data, 'p_a', 'sibling', existing)).toThrow(DUPLICATE)
+    expect(() => addRelative(data, 'p_a', 'sibling', existing)).toThrow(
+      SIBLING_ALREADY_LINKED_MESSAGE,
+    )
     expect(data).toEqual(before)
+  })
+
+  it('adds the missing biological edge to a sibling who shares a parent only by adoption', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_c' }, { id: 'p_s' }],
+      parentChild: [
+        ['p_b', 'p_a'],
+        ['p_c', 'p_a'],
+        ['p_b', 'p_s', 'adoptive'],
+      ],
+    })
+    const existing = { kind: 'existing', personId: 'p_s' } as const
+    addRelative(data, 'p_a', 'sibling', existing)
+    expect(data.parentChild.slice(3)).toEqual([
+      { parentId: 'p_c', childId: 'p_s', type: 'biological' },
+    ])
+    expect(checkRelationRules(data)).toEqual([])
   })
 
   it('refuses a shared-parent sibling who would get a third biological parent', () => {

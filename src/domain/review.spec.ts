@@ -94,4 +94,28 @@ describe('reviewEntries', () => {
     data.unions[0]!.start = { unconfirmed: true }
     expect(reviewEntries(data)).toEqual([])
   })
+
+  it('związek o powtórzonym id jest pomijany, a kolejność jest stała', () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_a' }, { id: 'p_b' }, { id: 'p_c' }],
+      unions: [
+        ['p_a', 'p_b'],
+        ['p_b', 'p_c'],
+      ],
+    })
+    for (const union of data.unions) union.start = { unconfirmed: true }
+    data.unions[1]!.id = data.unions[0]!.id
+    const entries = reviewEntries(data)
+    expect(entries).toEqual([
+      {
+        personId: 'p_a',
+        reasons: [{ kind: 'union', unionId: 'u_1', partnerId: 'p_b', unionType: 'marriage' }],
+      },
+      {
+        personId: 'p_b',
+        reasons: [{ kind: 'union', unionId: 'u_1', partnerId: 'p_a', unionType: 'marriage' }],
+      },
+    ])
+    expect(reviewEntries(data)).toEqual(entries)
+  })
 })

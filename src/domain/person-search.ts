@@ -33,6 +33,6 @@ export function comparePersonsByName(a: Person, b: Person): number {
   return (
     compareText(a.surname, b.surname) ||
     compareText(a.givenNames, b.givenNames) ||
-    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+    a.id.localeCompare(b.id)
   )
 }

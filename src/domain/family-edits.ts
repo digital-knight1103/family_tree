@@ -1,7 +1,9 @@
 import {
   canAddParent,
   canAddUnion,
+  hasParentEdge,
   MISSING_PERSON_MESSAGE,
+  SIBLING_ALREADY_LINKED_MESSAGE,
   type CanResult,
 } from './relation-rules.ts'
 import { unionsOf } from './relations.ts'
@@ -151,12 +153,8 @@ function applyChild(
   link(work, childId, anchorId, 'biological')
   // An existing child may already have the co-parent: that edge stays as it is.
   for (const parentId of partnerIds) {
-    if (!hasEdge(work, parentId, childId)) link(work, childId, parentId, 'biological')
+    if (!hasParentEdge(work, parentId, childId)) link(work, childId, parentId, 'biological')
   }
-}
-
-function hasEdge(work: FamilyData, parentId: string, childId: string): boolean {
-  return work.parentChild.some((r) => r.parentId === parentId && r.childId === childId)
 }
 
 function applySibling(
@@ -173,10 +171,10 @@ function applySibling(
     link(work, anchorId, parentId, 'biological')
     edges = [{ parentId, childId: anchorId, type: 'biological' }]
   }
-  // Parents the sibling already shares are skipped; sharing all of them adds nothing, so linking
-  // them all again reports the duplicate relation.
-  const missing = edges.filter((e) => !hasEdge(work, e.parentId, siblingId))
-  for (const edge of missing.length > 0 ? missing : edges) {
+  // Parents the sibling already shares are skipped; sharing all of them is refused.
+  const missing = edges.filter((e) => !hasParentEdge(work, e.parentId, siblingId))
+  if (missing.length === 0) fail(SIBLING_ALREADY_LINKED_MESSAGE)
+  for (const edge of missing) {
     link(work, siblingId, edge.parentId, edge.type)
   }
 }

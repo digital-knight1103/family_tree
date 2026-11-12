@@ -25,6 +25,10 @@ const MSG = {
 const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`)
 const edgeKey = (r: Pick<ParentChild, 'parentId' | 'childId'>) => `${r.parentId}|${r.childId}`
 
+export function hasParentEdge(data: FamilyData, parentId: string, childId: string): boolean {
+  return data.parentChild.some((r) => r.parentId === parentId && r.childId === childId)
+}
+
 function duplicateIdViolations(
   ids: string[],
   collection: string,
@@ -171,7 +175,7 @@ export function canAddParent(
     return { ok: false, reason: MSG.missingPerson }
   }
   if (childId === parentId) return { ok: false, reason: MSG.selfParent }
-  if (data.parentChild.some((r) => edgeKey(r) === edgeKey({ parentId, childId }))) {
+  if (hasParentEdge(data, parentId, childId)) {
     return { ok: false, reason: MSG.duplicateParentChild }
   }
   if (descendantIds(data, childId).has(parentId)) return { ok: false, reason: MSG.cycle }
@@ -198,3 +202,4 @@ export function canAddUnion(data: FamilyData, aId: string, bId: string): CanResu
 }
 
 export const MISSING_PERSON_MESSAGE = MSG.missingPerson
+export const SIBLING_ALREADY_LINKED_MESSAGE = MSG.duplicateParentChild
