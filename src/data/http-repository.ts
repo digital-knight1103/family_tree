@@ -2,6 +2,7 @@ import type { FamilyData } from '@/domain/schema'
 import type { ValidationError } from '@/domain/validate'
 import {
   loadSeed,
+  saveRequestBody,
   type FamilyRepository,
   type LoadResult,
   type SaveBase,
@@ -23,7 +24,7 @@ const MESSAGES = {
 
 type LoadResponse =
   | { kind: 'ok'; data: FamilyData; filePath?: string; hash: string }
-  | { kind: 'missing'; filePath?: string }
+  | { kind: 'missing'; filePath: string }
   | { kind: 'invalid'; filePath: string; errors: ValidationError[] }
 
 async function request(url: string, init: RequestInit, failure: string): Promise<Response> {
@@ -62,7 +63,11 @@ export class HttpFamilyRepository implements FamilyRepository {
     if (body.kind === 'invalid') {
       return { kind: 'invalid', filePath: body.filePath, errors: body.errors }
     }
-    if (body.kind === 'missing') return loadSeed()
+    if (body.kind === 'missing') {
+      const seed = await loadSeed()
+      if (seed.kind !== 'ok' || typeof body.filePath !== 'string') return seed
+      return { ...seed, filePath: body.filePath }
+    }
     throw new Error(MESSAGES.load)
   }
 
@@ -76,7 +81,7 @@ export class HttpFamilyRepository implements FamilyRepository {
       response = await fetch(`${BASE}/family`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, baseRevision: base.revision, baseHash: base.hash }),
+        body: saveRequestBody(data, base),
         ...(opts?.keepalive === true ? { keepalive: true } : {}),
       })
     } catch {

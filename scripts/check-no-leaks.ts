@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import type { FamilyData } from '../src/domain/schema.ts'
 
 const CANARY = 'CANARY_LEAK_TEST_7f3a'
 const DEMO_SURNAME = 'Kowalczyk'
@@ -9,6 +10,8 @@ const IMAGE_EXTENSION = /\.(webp|jpe?g|png)$/i
 const ALLOWED_IMAGE_PREFIXES = ['public/', 'src/assets/']
 /** The README screenshot of the demo family; one exact path, not the whole docs/ folder. */
 const ALLOWED_IMAGE_PATHS = ['docs/screenshot.png']
+/** A person id (PERSON_ID_PATTERN) as a whole quoted string literal, in any quoting the bundle uses. */
+const QUOTED_PERSON_ID = /["'`](p_[A-Za-z0-9_-]+)\\?["'`]/g
 
 export function checkTrackedFiles(trackedPaths: string[]): string[] {
   const violations: string[] = []
@@ -65,6 +68,25 @@ export function checkDistHasNoDataFiles(distDir: string): string[] {
     .map(({ full }) => full)
 }
 
+/** Person ids in dist text must be exactly the seed's: no others, none missing. */
+export function checkDistMatchesSeed(distDir: string, seed: FamilyData): string[] {
+  const seedIds = new Set(seed.persons.map((person) => person.id))
+  const distIds = new Set<string>()
+  for (const file of listFiles(distDir)) {
+    for (const [, id] of fs.readFileSync(file, 'utf8').matchAll(QUOTED_PERSON_ID)) {
+      if (id) distIds.add(id)
+    }
+  }
+  return [
+    ...[...distIds]
+      .filter((id) => !seedIds.has(id))
+      .map((id) => `Build zawiera osobę spoza danych demo: ${id}`),
+    ...[...seedIds]
+      .filter((id) => !distIds.has(id))
+      .map((id) => `Build nie zawiera osoby z danych demo: ${id}`),
+  ]
+}
+
 function main(): number {
   const projectRoot = fileURLToPath(new URL('..', import.meta.url))
   const distDir = path.join(projectRoot, 'dist')
@@ -81,6 +103,9 @@ function main(): number {
     .split('\0')
     .filter(Boolean)
 
+  const seed = JSON.parse(
+    fs.readFileSync(path.join(projectRoot, 'data', 'seed', 'demo-family.json'), 'utf8'),
+  ) as FamilyData
   const relative = (file: string) => path.relative(projectRoot, file).split(path.sep).join('/')
   const violations = [
     ...checkTrackedFiles(tracked),
@@ -90,6 +115,7 @@ function main(): number {
     ...checkDistHasNoDataFiles(distDir).map(
       (file) => `Plik lub folder z danymi w buildzie: ${relative(file)}`,
     ),
+    ...checkDistMatchesSeed(distDir, seed),
   ]
   if (filesContaining(distDir, DEMO_SURNAME).length === 0) {
     violations.push(`Build nie zawiera danych demo (brak nazwiska „${DEMO_SURNAME}” w dist)`)

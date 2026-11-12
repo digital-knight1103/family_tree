@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FamilyData } from '@/domain/schema'
-import type { FamilyRepository, SaveBase, SaveResult } from './repository'
-import { createSaveQueue } from './save-queue'
+import {
+  saveRequestBody,
+  type FamilyRepository,
+  type SaveBase,
+  type SaveResult,
+} from './repository'
+import { createSaveQueue, KEEPALIVE_LIMIT_BYTES } from './save-queue'
 
 type Deferred = { resolve: (result: SaveResult) => void }
 
@@ -26,6 +31,14 @@ async function settle(deferred: Deferred | undefined, result: SaveResult) {
 }
 
 const state = (n: number) => ({ id: `state-${n}` }) as unknown as FamilyData
+const withNote = (note: string) => ({ id: 'big', note }) as unknown as FamilyData
+const bodyBytes = (data: FamilyData, base: SaveBase) =>
+  new TextEncoder().encode(saveRequestBody(data, base)).length
+
+// Data whose save body at `base` is exactly `bytes` bytes of UTF-8.
+function dataOfBodySize(bytes: number, base: SaveBase): FamilyData {
+  return withNote('x'.repeat(bytes - bodyBytes(withNote(''), base)))
+}
 
 describe('createSaveQueue', () => {
   beforeEach(() => {
@@ -281,6 +294,48 @@ describe('createSaveQueue', () => {
     queue.flushOnUnload()
     expect(save).toHaveBeenCalledTimes(2)
     expect(save).toHaveBeenLastCalledWith(a, baseAt(4), { keepalive: true })
+  })
+
+  it('keeps keepalive for a final save of exactly KEEPALIVE_LIMIT_BYTES', () => {
+    const { save, queue } = setup(baseAt(2))
+    const data = dataOfBodySize(KEEPALIVE_LIMIT_BYTES, baseAt(2))
+    expect(KEEPALIVE_LIMIT_BYTES).toBe(60_000)
+    expect(bodyBytes(data, baseAt(2))).toBe(60_000)
+    queue.schedule(data)
+    queue.flushOnUnload()
+    expect(save).toHaveBeenCalledWith(data, baseAt(2), { keepalive: true })
+  })
+
+  it('sends a final save over the limit without keepalive and stays unsaved until it settles', async () => {
+    const { save, queue, pending } = setup(baseAt(2))
+    const data = dataOfBodySize(KEEPALIVE_LIMIT_BYTES + 1, baseAt(2))
+    queue.schedule(data)
+    queue.flushOnUnload()
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(save.mock.calls[0]).toEqual([data, baseAt(2)])
+    expect(queue.hasUnsaved()).toBe(true)
+    await settle(pending[0], ok(3))
+    expect(queue.hasUnsaved()).toBe(false)
+  })
+
+  it('measures the limit in UTF-8 bytes, not characters', () => {
+    const { save, queue } = setup(baseAt(2))
+    const data = withNote('ż'.repeat(KEEPALIVE_LIMIT_BYTES / 2))
+    expect(saveRequestBody(data, baseAt(2)).length).toBeLessThan(KEEPALIVE_LIMIT_BYTES)
+    queue.schedule(data)
+    queue.flushOnUnload()
+    expect(save.mock.calls[0]).toEqual([data, baseAt(2)])
+  })
+
+  it('sends a large state in error without keepalive on unload', async () => {
+    const { save, queue, pending } = setup(baseAt(4))
+    const data = dataOfBodySize(KEEPALIVE_LIMIT_BYTES + 1, baseAt(4))
+    queue.schedule(data, { immediate: true })
+    await settle(pending[0], { kind: 'error', message: 'x' })
+    queue.flushOnUnload()
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(save.mock.calls[1]).toEqual([data, baseAt(4)])
+    expect(queue.hasUnsaved()).toBe(true)
   })
 
   it('hasUnsaved is true in pending, saving and error, false in saved', async () => {

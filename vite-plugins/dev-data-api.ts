@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import path from 'node:path'
 import { loadEnv, type Plugin } from 'vite'
 import { resolveDataDir } from '../scripts/resolve-data-dir.ts'
 import { PERSON_ID_PATTERN, PHOTO_FILE_PATTERN, type FamilyData } from '../src/domain/schema.ts'
@@ -79,7 +80,7 @@ export function devDataApi(options: { dataDir?: string } = {}): Plugin {
     configureServer(server) {
       const { root, mode } = server.config
       const env = { ...loadEnv(mode, root, ''), ...process.env }
-      const dataDir = options.dataDir ?? resolveDataDir(env, root)
+      const dataDir = path.resolve(options.dataDir ?? resolveDataDir(env, root))
       const store = createDataStore(dataDir)
 
       async function family(req: IncomingMessage, res: ServerResponse, rest: string[]) {

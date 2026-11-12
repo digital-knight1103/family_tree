@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FamilyData } from '@/domain/schema'
 import { HttpFamilyRepository } from './http-repository'
+import { saveRequestBody } from './repository'
 
 function jsonResponse(status: number, body?: unknown): Response {
   return new Response(body === undefined ? null : JSON.stringify(body), {
@@ -35,6 +36,20 @@ describe('HttpFamilyRepository.load', () => {
     expect(result.source).toBe('demo')
     expect(result.readOnly).toBe(true)
     expect(result.data.persons.length).toBeGreaterThanOrEqual(15)
+  })
+
+  it('keeps the path where the missing file was sought', async () => {
+    stubFetch(jsonResponse(200, { kind: 'missing', filePath: 'C:\\dane\\family.json' }))
+    const result = await new HttpFamilyRepository().load()
+    expect(result.kind === 'ok' && result.source === 'demo' && result.filePath).toBe(
+      'C:\\dane\\family.json',
+    )
+  })
+
+  it('shows the demo without a path when the server sends none', async () => {
+    stubFetch(jsonResponse(200, { kind: 'missing' }))
+    const result = await new HttpFamilyRepository().load()
+    expect(result.kind === 'ok' && result.source === 'demo' && result.filePath).toBeUndefined()
   })
 
   it('returns user data as editable', async () => {
@@ -94,6 +109,7 @@ describe('HttpFamilyRepository.save', () => {
       baseRevision: 6,
       baseHash: 'h6',
     })
+    expect(init.body).toBe(saveRequestBody(sampleData, base(6)))
     expect(init.keepalive).toBeUndefined()
   })
 

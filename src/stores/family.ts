@@ -18,6 +18,8 @@ export const useFamilyStore = defineStore('family', () => {
   const readOnly = ref(false)
   const invalid = ref<{ filePath: string; errors: ValidationError[] } | null>(null)
   const loadError = ref<string | null>(null)
+  // Where the dev server looked for the user data file it did not find.
+  const missingFilePath = ref<string | null>(null)
   const queue = shallowRef<SaveQueue | null>(null)
 
   const saveStatus = computed(() => queue.value?.status.value ?? 'idle')
@@ -28,6 +30,8 @@ export const useFamilyStore = defineStore('family', () => {
 
   function apply(result: LoadResult) {
     loadError.value = null
+    missingFilePath.value =
+      result.kind === 'ok' && result.source === 'demo' ? (result.filePath ?? null) : null
     if (result.kind === 'invalid') {
       status.value = 'invalid'
       invalid.value = { filePath: result.filePath, errors: result.errors }
@@ -111,6 +115,7 @@ export const useFamilyStore = defineStore('family', () => {
     readOnly,
     invalid,
     loadError,
+    missingFilePath,
     saveStatus,
     saveError,
     canEdit,

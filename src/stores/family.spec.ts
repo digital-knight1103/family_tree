@@ -81,6 +81,22 @@ describe('useFamilyStore', () => {
     expect(store.loadError).toBe('Nie udało się')
   })
 
+  it('keeps the path where missing user data was sought, and drops it for user data', async () => {
+    repo.load.mockResolvedValue({
+      kind: 'ok',
+      data: buildFamily({ persons: [{ id: 'p_a' }] }),
+      source: 'demo',
+      readOnly: true,
+      filePath: 'C:/dane/family.json',
+    })
+    const store = useFamilyStore()
+    await store.load()
+    expect(store.missingFilePath).toBe('C:/dane/family.json')
+    repo.createNew.mockResolvedValue(userResult(emptyFamilyData()))
+    await store.startOwnTree()
+    expect(store.missingFilePath).toBeNull()
+  })
+
   it('loads demo data as read-only and update throws', async () => {
     repo.load.mockResolvedValue({
       kind: 'ok',

@@ -41,7 +41,11 @@ const panel = usePanelStore()
     <Button class="mt-4" @click="store.load()">Spróbuj ponownie</Button>
   </section>
   <template v-else-if="store.status === 'ready' && store.data">
-    <DemoBanner v-if="store.source === 'demo'" @start="store.startOwnTree()" />
+    <DemoBanner
+      v-if="store.source === 'demo'"
+      :file-path="store.missingFilePath ?? undefined"
+      @start="store.startOwnTree()"
+    />
     <EmptyTreeState v-if="store.data.persons.length === 0">
       <AddPersonForm v-if="store.canEdit" mode="first" />
     </EmptyTreeState>

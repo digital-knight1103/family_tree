@@ -10,7 +10,8 @@ export type LoadResult =
       filePath?: string
       hash: string
     }
-  | { kind: 'ok'; data: FamilyData; source: 'demo'; readOnly: true }
+  // filePath: where the dev server looked for the missing user data file.
+  | { kind: 'ok'; data: FamilyData; source: 'demo'; readOnly: true; filePath?: string }
   | { kind: 'invalid'; filePath: string; errors: ValidationError[] }
 
 // The file state a save builds on: its revision and the sha256 of its raw bytes.
@@ -23,6 +24,11 @@ export type SaveResult =
   | { kind: 'ok'; revision: number; hash: string }
   | { kind: 'conflict' }
   | { kind: 'error'; message: string }
+
+// The exact body of a save request; the save queue measures it to pick keepalive.
+export function saveRequestBody(data: FamilyData, base: SaveBase): string {
+  return JSON.stringify({ data, baseRevision: base.revision, baseHash: base.hash })
+}
 
 export interface FamilyRepository {
   load(): Promise<LoadResult>

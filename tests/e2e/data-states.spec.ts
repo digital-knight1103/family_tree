@@ -56,6 +56,7 @@ test('brak pliku pokazuje demo, a start własnego drzewa tworzy plik', async ({ 
   await expect(page.getByTestId('demo-banner')).toContainText(
     'To są dane przykładowe. Zmiany nie są zapisywane.',
   )
+  await expect(page.getByTestId('demo-file-path')).toHaveText(`Szukano danych w: ${FAMILY_FILE}`)
   await page.getByRole('button', { name: 'Rozpocznij własne drzewo' }).click()
   await expect(page.getByText('Twoje drzewo jest puste')).toBeVisible()
   await expect(page.getByTestId('demo-banner')).toHaveCount(0)

@@ -1,6 +1,11 @@
 import { ref, type Ref } from 'vue'
 import type { FamilyData } from '@/domain/schema'
-import type { FamilyRepository, SaveBase, SaveResult } from './repository'
+import {
+  saveRequestBody,
+  type FamilyRepository,
+  type SaveBase,
+  type SaveResult,
+} from './repository'
 
 export type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error' | 'conflict'
 
@@ -14,6 +19,10 @@ export interface SaveQueue {
 }
 
 const DEFAULT_DEBOUNCE_MS = 500
+// Browsers reject a keepalive request whose body exceeds 64 KiB (summed over all
+// in-flight keepalive requests), so a larger final save goes out as a normal request
+// and the beforeunload warning stays up until it settles.
+export const KEEPALIVE_LIMIT_BYTES = 60_000
 const SAVE_FAILED_MESSAGE = 'Nie udało się zapisać danych.'
 
 function rejectionMessage(error: unknown): string {
@@ -89,8 +98,10 @@ export function createSaveQueue(
       timer = setTimeout(() => send(false), debounceMs)
     },
     flushOnUnload() {
-      if (inFlight) return
-      if (status.value === 'pending' || status.value === 'error') send(true)
+      if (inFlight || !latest) return
+      if (status.value !== 'pending' && status.value !== 'error') return
+      const bytes = new TextEncoder().encode(saveRequestBody(latest, base)).length
+      send(bytes <= KEEPALIVE_LIMIT_BYTES)
     },
     retry() {
       if (status.value === 'error' && !inFlight) send(false)

@@ -80,6 +80,13 @@ describe('GET/PUT/POST /__data/family', () => {
     expect(await getFamily()).toEqual({ kind: 'missing', filePath: path.join(tmp, 'family.json') })
   })
 
+  it('zgłasza brak pliku z bezwzględną ścieżką także dla względnego dataDir', async () => {
+    await start({ dataDir: path.relative(process.cwd(), tmp) })
+    const { filePath } = await getFamily()
+    expect(filePath).toBe(path.join(tmp, 'family.json'))
+    expect(path.isAbsolute(filePath ?? '')).toBe(true)
+  })
+
   it('tworzy nowe drzewo, a potem je odczytuje', async () => {
     await start()
     const created = await fetch(`${base}/__data/family/new`, { method: 'POST' })
