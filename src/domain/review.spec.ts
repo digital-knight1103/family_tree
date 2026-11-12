@@ -118,4 +118,15 @@ describe('reviewEntries', () => {
     ])
     expect(reviewEntries(data)).toEqual(entries)
   })
+
+  it('związek osoby z samą sobą daje jeden powód', () => {
+    const data = buildFamily({ persons: [{ id: 'p_a' }], unions: [['p_a', 'p_a']] })
+    data.unions[0]!.start = { unconfirmed: true }
+    expect(reviewEntries(data)).toEqual([
+      {
+        personId: 'p_a',
+        reasons: [{ kind: 'union', unionId: 'u_1', partnerId: 'p_a', unionType: 'marriage' }],
+      },
+    ])
+  })
 })

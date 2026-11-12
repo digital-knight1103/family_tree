@@ -43,6 +43,16 @@ describe('comparePersonsByName', () => {
   }
   const sorted = (list: Person[]) => [...list].sort(comparePersonsByName).map((p) => p.id)
 
+  it('remis rozstrzyga porównanie id po kodach znaków, nie według locale', () => {
+    const list = [
+      named('p_a', 'A', 'Nowak'),
+      named('p__', 'A', 'Nowak'),
+      named('p_B', 'A', 'Nowak'),
+      named('p_1', 'A', 'Nowak'),
+    ]
+    expect(sorted(list)).toEqual(['p_1', 'p_B', 'p__', 'p_a'])
+  })
+
   it('sortuje po nazwisku, ł po l', () => {
     const list = [
       named('p_3', 'A', 'Mazur'),

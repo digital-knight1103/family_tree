@@ -28,8 +28,11 @@ export function reviewEntries(data: FamilyData): ReviewEntry[] {
   for (const union of data.unions) {
     if (union.start?.unconfirmed !== true || seenUnionIds.has(union.id)) continue
     seenUnionIds.add(union.id)
-    for (const id of union.partnerIds)
-      unionsByPerson.set(id, [...(unionsByPerson.get(id) ?? []), union])
+    for (const id of new Set(union.partnerIds)) {
+      const list = unionsByPerson.get(id) ?? []
+      list.push(union)
+      unionsByPerson.set(id, list)
+    }
   }
   const entries: ReviewEntry[] = []
   for (const person of data.persons) {

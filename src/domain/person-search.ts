@@ -26,6 +26,12 @@ function compareText(a: string, b: string): number {
   return a.trim().localeCompare(b.trim(), 'pl', { sensitivity: 'base' })
 }
 
+function compareIds(a: string, b: string): number {
+  if (a < b) return -1
+  if (a > b) return 1
+  return 0
+}
+
 export function comparePersonsByName(a: Person, b: Person): number {
   const unknownA = isUnknownPerson(a)
   const unknownB = isUnknownPerson(b)
@@ -33,6 +39,6 @@ export function comparePersonsByName(a: Person, b: Person): number {
   return (
     compareText(a.surname, b.surname) ||
     compareText(a.givenNames, b.givenNames) ||
-    a.id.localeCompare(b.id)
+    compareIds(a.id, b.id)
   )
 }
