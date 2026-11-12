@@ -64,4 +64,36 @@ describe('focusNodeIds', () => {
       'union:u_1',
     ])
   })
+
+  it('obejmuje inne związki rodzica z dziećmi (przyrodnie rodzeństwo), ale nie bezdzietne', () => {
+    const edges = [
+      edge('partner', 'person:p_mama', 'union:u_0'),
+      edge('partner', 'person:p_tata', 'union:u_0'),
+      edge('child', 'union:u_0', 'person:p_ja'),
+      edge('partner', 'person:p_mama', 'union:u_2'),
+      edge('partner', 'person:p_inny', 'union:u_2'),
+      edge('child', 'union:u_2', 'person:p_polbrat'),
+      edge('partner', 'person:p_tata', 'union:u_3'),
+      edge('partner', 'person:p_druga', 'union:u_3'),
+    ]
+    expect([...focusNodeIds(edges, 'p_ja')].sort()).toEqual([
+      'person:p_ja',
+      'union:u_0',
+      'union:u_2',
+    ])
+  })
+
+  it('obejmuje związek samotnego rodzica z dziećmi', () => {
+    const edges = [
+      edge('child', 'person:p_mama', 'person:p_ja'),
+      edge('partner', 'person:p_mama', 'union:u_2'),
+      edge('partner', 'person:p_inny', 'union:u_2'),
+      edge('child', 'union:u_2', 'person:p_polbrat'),
+    ]
+    expect([...focusNodeIds(edges, 'p_ja')].sort()).toEqual([
+      'person:p_ja',
+      'person:p_mama',
+      'union:u_2',
+    ])
+  })
 })

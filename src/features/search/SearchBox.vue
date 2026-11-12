@@ -66,10 +66,16 @@ function isEditable(target: EventTarget | null): boolean {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
+/** A confirmation or other modal window owns the keyboard: the shortcuts leave its keys alone. */
+function modalOpen(): boolean {
+  return document.querySelector('[role="alertdialog"], [role="dialog"][aria-modal="true"]') !== null
+}
+
 useEventListener(document, 'keydown', (event: KeyboardEvent) => {
   const ctrlK = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'
   const slash = event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey
   if (!ctrlK && !(slash && !isEditable(event.target))) return
+  if (modalOpen()) return
   event.preventDefault()
   input.value?.$el.focus()
 })

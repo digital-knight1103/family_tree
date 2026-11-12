@@ -23,14 +23,27 @@ export function closestRelatives(data: FamilyData, personId: string): Map<string
 
 /**
  * Layout nodes that stay bright around the selected person: the person, the family nodes it
- * comes from and its own union nodes. Edges touching one of them stay bright too.
+ * comes from, its own union nodes and the other unions of its parents that have children (the
+ * lines to half-siblings). Edges touching one of them stay bright too.
  */
 export function focusNodeIds(edges: RoutedEdge[], personId: string): Set<string> {
   const self = `person:${personId}`
   const ids = new Set([self])
+  const origins = new Set<string>()
   for (const edge of edges) {
-    if (edge.kind === 'child' && edge.target === self) ids.add(edge.source)
+    if (edge.kind === 'child' && edge.target === self) origins.add(edge.source)
     if (edge.kind === 'partner' && edge.source === self) ids.add(edge.target)
   }
+  const parents = new Set([...origins].filter((id) => id.startsWith('person:')))
+  for (const edge of edges) {
+    if (edge.kind === 'partner' && origins.has(edge.target)) parents.add(edge.source)
+  }
+  const families = new Set(edges.filter((edge) => edge.kind === 'child').map((e) => e.source))
+  for (const edge of edges) {
+    if (edge.kind === 'partner' && parents.has(edge.source) && families.has(edge.target)) {
+      ids.add(edge.target)
+    }
+  }
+  for (const id of origins) ids.add(id)
   return ids
 }

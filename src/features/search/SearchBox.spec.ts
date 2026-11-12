@@ -99,6 +99,24 @@ describe('SearchBox', () => {
     expect(document.activeElement).not.toBe(field(w).element)
   })
 
+  it.each([
+    ['/', false],
+    ['k', true],
+  ])('skrót „%s” (Ctrl: %s) przy otwartym oknie modalnym nie działa', (key, ctrlKey) => {
+    const w = mountBox()
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'alertdialog')
+    const button = document.createElement('button')
+    dialog.appendChild(button)
+    document.body.appendChild(dialog)
+    button.focus()
+    const event = new KeyboardEvent('keydown', { key, ctrlKey, bubbles: true, cancelable: true })
+    button.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(false)
+    expect(document.activeElement).toBe(button)
+    expect(document.activeElement).not.toBe(field(w).element)
+  })
+
   it('Ctrl+K przenosi fokus do wyszukiwarki także z pola tekstowego', () => {
     const w = mountBox()
     const textarea = document.createElement('textarea')
