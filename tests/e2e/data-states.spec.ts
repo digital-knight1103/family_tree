@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, test } from './fixtures/test'
 import { E2E_DATA_DIR, resetDataDir } from './fixtures/data-dir'
 
 const FAMILY_FILE = path.join(E2E_DATA_DIR, 'family.json')

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterView } from 'vue-router'
+import SplashScreen from '@/app/splash/SplashScreen.vue'
 import { ReviewButton } from '@/features/research'
 import { SearchBox } from '@/features/search'
 import { CenterOnSelfButton } from '@/features/tree'
@@ -17,6 +18,7 @@ useUnsavedGuard(store)
 onMounted(() => store.load())
 
 const hasPersons = computed(() => (store.data?.persons.length ?? 0) > 0)
+const splashOpen = ref(true)
 </script>
 
 <template>
@@ -45,4 +47,5 @@ const hasPersons = computed(() => (store.data?.persons.length ?? 0) > 0)
     </header>
     <RouterView />
   </div>
+  <SplashScreen v-if="splashOpen" @done="splashOpen = false" />
 </template>

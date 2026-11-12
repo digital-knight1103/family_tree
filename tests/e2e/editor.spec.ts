@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { expect, test, type Locator } from '@playwright/test'
+import type { Locator } from '@playwright/test'
+import { expect, test } from './fixtures/test'
 import { E2E_DATA_DIR, resetDataDir } from './fixtures/data-dir'
 
 const PIOTR = '[data-person-id="p_piotr_kowalczyk"]'

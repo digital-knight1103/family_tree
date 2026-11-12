@@ -36,6 +36,31 @@ describe('App', () => {
     expect(wrapper.find('[data-testid="save-status"]').exists()).toBe(true)
   })
 
+  it('ekran powitalny leży nad aplikacją, która wczytuje dane od razu', async () => {
+    sessionStorage.clear()
+    repo.load.mockClear()
+    repo.load.mockResolvedValue({
+      kind: 'ok',
+      data: emptyFamilyData(),
+      source: 'user',
+      readOnly: false,
+      hash: 'h0',
+    })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: { template: '<div />' } }],
+    })
+    await router.push('/')
+    await router.isReady()
+
+    const wrapper = mount(App, { global: { plugins: [createPinia(), router] } })
+    await flushPromises()
+
+    expect(wrapper.find('[aria-label="Ekran powitalny"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="app-shell"]').exists()).toBe(true)
+    expect(repo.load).toHaveBeenCalledTimes(1)
+  })
+
   it('w trybie demo pokazuje pasek z przyciskiem, ale bez wskaźnika zapisu', async () => {
     repo.load.mockResolvedValue({
       kind: 'ok',
