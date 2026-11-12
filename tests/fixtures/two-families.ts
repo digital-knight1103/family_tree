@@ -1,4 +1,4 @@
-import type { FamilyData } from '@/domain/schema'
+import type { FamilyData, Sex } from '@/domain/schema'
 import { buildFamily, type FamilySpec } from './build-family'
 
 export interface TwoFamiliesOptions {
@@ -11,6 +11,8 @@ export interface TwoFamiliesOptions {
    * (default the second child of A and the first child of B).
    */
   bridge?: { left: number; right: number }
+  /** A second couple between a child of A and a child of B (default none). */
+  secondBridge?: { left: number; right: number }
   /** Family B has one parent in the tree instead of a couple. */
   singleRightParent?: boolean
   /** Children of the bridging couple (default none). */
@@ -36,6 +38,7 @@ export function twoFamilies(options: TwoFamiliesOptions = {}): FamilyData {
     bridge = { left: 1, right: 0 },
     singleRightParent = false,
     bridgeChildren = 0,
+    secondBridge,
   } = options
   const born = (year: number) => ({ birth: { date: { year } } })
   const persons: FamilySpec['persons'] = [
@@ -65,5 +68,14 @@ export function twoFamilies(options: TwoFamiliesOptions = {}): FamilyData {
   const unions: NonNullable<FamilySpec['unions']> = [['p_a_ojciec', 'p_a_matka']]
   if (!singleRightParent) unions.push(['p_b_ojciec', 'p_b_matka'])
   unions.push(couple)
+  if (secondBridge) unions.push([leftChild(secondBridge.left), rightChild(secondBridge.right)])
   return buildFamily({ persons, parentChild, unions })
+}
+
+/** The same data with the given persons' sex changed (every person is 'unknown' by default). */
+export function withSexes(data: FamilyData, sexes: Record<string, Sex>): FamilyData {
+  return {
+    ...data,
+    persons: data.persons.map((p) => (sexes[p.id] ? { ...p, sex: sexes[p.id]! } : p)),
+  }
 }

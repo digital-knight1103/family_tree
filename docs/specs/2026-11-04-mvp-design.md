@@ -202,7 +202,7 @@ Wymagane właściwości wizualne:
 - rodzeństwo uporządkowane według daty urodzenia (klucz z 5.1), z wyjątkiem z reguły 2 niżej,
 - **reguły twarde bloków rodzeństwa** (wymagane, dodane 2026-11-12 po błędzie na prawdziwych danych):
   1. rodzeństwo (dzieci tej samej pary albo tego samego samotnego rodzica) stoi w rzędzie w jednym ciągłym bloku; między rodzeństwem mogą stać tylko ich partnerzy;
-  2. para, w której oboje partnerzy mają rodziców w drzewie, stoi na styku dwóch bloków rodzeństwa: każde z partnerów na tej krawędzi swojego bloku, która jest bliżej drugiego; dla tych dwóch osób kolejność urodzenia może zostać złamana;
+  2. para, w której oboje partnerzy mają rodziców w drzewie, stoi na styku dwóch bloków rodzeństwa: każde z partnerów na tej krawędzi swojego bloku, która jest bliżej drugiego; dla tych dwóch osób kolejność urodzenia może zostać złamana; strona jest stała (decyzja autora 2026-11-12): rodzina mężczyzny po lewej, rodzina kobiety po prawej, a dopisanie albo zmiana daty urodzenia nie zamienia rodzin stronami; tylko przy parze bez takiego rozróżnienia płci (płeć nieznana u choćby jednej osoby albo ta sama płeć) stronę wybiera układ (mniej złamań kolejności urodzenia, deterministycznie);
   3. poziome linie rodzeństwa różnych par nigdy się nie nakładają ani nie przecinają (rozłączne przedziały x albo różna wysokość bez przecięcia);
   4. rodzice stoją wyśrodkowani nad swoim blokiem (kompromis jak wyżej, gdy szersze gałęzie nie pozwalają),
 - układ jest **deterministyczny** (wymagane): te same dane dają ten sam obraz.

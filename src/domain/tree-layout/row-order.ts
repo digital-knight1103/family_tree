@@ -96,10 +96,23 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
     familyOf.set(child, own!)
   }
 
+  const partnersOf = new Map<string, string[]>()
+  for (const union of unions) {
+    const [a, b] = parentsIn(union.id) as [string, string]
+    partnersOf.set(a, [...(partnersOf.get(a) ?? []), b])
+    partnersOf.set(b, [...(partnersOf.get(b) ?? []), a])
+  }
+  const sexOf = (id: string) => {
+    const node = byId.get(id)!
+    return node.kind === 'person' ? node.sex : 'unknown'
+  }
+
   const rowOrders = new Map<number, string[]>()
   for (const node of graph.nodes) {
     if (node.kind !== 'person') continue
-    rowOrders.set(node.generation, [...(rowOrders.get(node.generation) ?? []), node.id])
+    const order = rowOrders.get(node.generation) ?? []
+    order.push(node.id)
+    rowOrders.set(node.generation, order)
   }
   const rows = new Map<number, Row>()
   for (const [generation, order] of rowOrders) {
@@ -311,6 +324,9 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
     if (trend < 0) unit.members = [...unit.members].reverse()
   }
 
+  const birthIn = (unit: Unit, family: string) =>
+    Math.min(...unit.members.filter((id) => familyOf.get(id) === family).map((id) => rank.get(id)!))
+
   /** A unit with the order its members take. */
   type Placed = { unit: Unit; members: string[] }
 
@@ -320,19 +336,18 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
    * birth order of its children in them, except that the units it shares with the next family in
    * the walk stand at the run's end facing that family, so a joining couple stands at the seam.
    * The runs go left to right or, mirrored, right to left (each run keeping its birth order).
-   * The direction comes from the first fixed-order unit joining two neighbouring families, else
-   * (with `preferBirthOrder`) from whichever direction leaves fewer siblings out of birth order,
-   * else from the keys of the first and the last family. A free joining unit turns so each
+   * The direction comes from the sex of a joining couple (`sexDirection`: the man's family on
+   * the left, fixed by the author, so new or changed birth dates never swap the sides), else from
+   * the first fixed-order unit joining two neighbouring families, else (with `preferBirthOrder`)
+   * from whichever direction leaves fewer siblings out of birth order, else from the keys of the
+   * first and the last family. When the sex rule and a fixed-order unit disagree, the sides follow
+   * the sex rule and the unit keeps its own order. A free joining unit turns so each
    * partner faces their own family. Where one row cannot keep every family whole (a person
    * joined to two other families, or a family joined to three), the walk's earlier families do.
    */
   function arrange(cluster: Cluster, keyOf: KeyOf, preferBirthOrder: boolean): Placed[] {
     const families = cluster.families
     if (families.length === 0) return cluster.units.map((unit) => ({ unit, members: unit.members }))
-    const birthIn = (unit: Unit, family: string) =>
-      Math.min(
-        ...unit.members.filter((id) => familyOf.get(id) === family).map((id) => rank.get(id)!),
-      )
     const placed = new Set<Unit>()
     const runs = families.map((family, i) => {
       const next = families[i + 1]
@@ -359,8 +374,8 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
       })
     }
     /** Pairs of siblings standing against their birth order. */
-    const inversions = (placed: Placed[]) => {
-      const order = placed.flatMap((p) => p.members).filter((id) => familyOf.has(id))
+    const inversions = (lineup: Placed[]) => {
+      const order = lineup.flatMap((p) => p.members).filter((id) => familyOf.has(id))
       let count = 0
       for (let i = 0; i < order.length; i++) {
         for (let j = i + 1; j < order.length; j++) {
@@ -371,7 +386,7 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
       return count
     }
 
-    let mirror = anchoredDirection(cluster)
+    let mirror = sexDirection(cluster) ?? anchoredDirection(cluster)
     if (mirror === undefined && preferBirthOrder) {
       const [forward, backward] = [inversions(lineUp(false)), inversions(lineUp(true))]
       if (forward !== backward) mirror = backward < forward
@@ -385,6 +400,35 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
       mirror = keyOfFamily(families[0]!) > keyOfFamily(families[families.length - 1]!)
     }
     return lineUp(mirror)
+  }
+
+  /**
+   * Whether the man's family stands right of the woman's in the walk order, so the cluster must
+   * be mirrored to put it on the left (spec §6.4, rule 2). The first couple of a man and a woman
+   * from two neighbouring families of the walk decides: pairs of families in walk order, within a
+   * pair by the birth of the partner from the family earlier in the walk. Couples with an unknown
+   * sex or the same sex are skipped; a couple pointing the opposite way still stands at the seam,
+   * but with the woman's family on the left of it. `undefined` when no couple decides.
+   */
+  function sexDirection(cluster: Cluster): boolean | undefined {
+    const families = cluster.families
+    for (let i = 1; i < families.length; i++) {
+      const [left, right] = [families[i - 1]!, families[i]!]
+      const fromLeft = cluster.units
+        .filter((unit) => unit.families.includes(left) && unit.families.includes(right))
+        .flatMap((unit) => unit.members.filter((id) => familyOf.get(id) === left))
+        .sort((a, b) => rank.get(a)! - rank.get(b)!)
+      for (const person of fromLeft) {
+        const partners = (partnersOf.get(person) ?? [])
+          .filter((partner) => familyOf.get(partner) === right)
+          .sort((a, b) => rank.get(a)! - rank.get(b)!)
+        for (const partner of partners) {
+          const sexes = [sexOf(person), sexOf(partner)]
+          if (sexes.includes('male') && sexes.includes('female')) return sexes[1] === 'male'
+        }
+      }
+    }
+    return undefined
   }
 
   /**

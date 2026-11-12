@@ -1,9 +1,9 @@
 import { genDateSortKey } from '@/domain/dates'
-import type { FamilyData } from '@/domain/schema'
+import type { FamilyData, Sex } from '@/domain/schema'
 import { assignGenerations } from './generations'
 
 export type TreeNode =
-  | { id: string; kind: 'person'; personId: string; generation: number }
+  | { id: string; kind: 'person'; personId: string; sex: Sex; generation: number }
   | {
       id: string
       kind: 'union'
@@ -135,6 +135,7 @@ export function buildTreeGraph(data: FamilyData): TreeGraph {
       id: personNodeId(p.id),
       kind: 'person',
       personId: p.id,
+      sex: p.sex,
       generation: generations.get(p.id)!,
     })),
     ...unionNodes.values(),

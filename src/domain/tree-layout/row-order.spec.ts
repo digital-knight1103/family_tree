@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import seed from '@seed/demo-family.json'
 import { familyDataSchema, type FamilyData } from '@/domain/schema'
 import { buildFamily } from '@tests/fixtures/build-family'
-import { leftChild, rightChild, twoFamilies } from '@tests/fixtures/two-families'
+import { leftChild, rightChild, twoFamilies, withSexes } from '@tests/fixtures/two-families'
 import { buildTreeGraph } from './graph'
 import { orderNodes } from './row-order'
 
@@ -221,14 +221,14 @@ describe('orderNodes (bloki rodzeństwa, §6.4 reguły twarde 1 i 2)', () => {
     ])
   })
 
-  it('para mosta w środku obu rodzin przesuwa się na styk, kierunek łamie najmniej kolejności urodzenia', () => {
+  it('para mosta (płeć nieznana) w środku obu rodzin przesuwa się na styk, kierunek łamie najmniej kolejności urodzenia', () => {
     // A on the left would put a2 after a3, a4 and b2 before b1 (3 pairs against birth order);
     // B on the left only b2 after b3 and a2 before a1 (2 pairs).
     const graph = buildTreeGraph(twoFamilies({ bridge: { left: 1, right: 1 } }))
     expect(personRow(graph, 1)).toEqual([b(0), b(2), b(1), a(1), a(0), a(2), a(3)])
   })
 
-  it('najstarsze dziecko w parze mosta: jego rodzina staje po prawej, kolejność urodzenia zostaje', () => {
+  it('najstarsze dziecko w parze mosta (płeć nieznana): jego rodzina staje po prawej, kolejność urodzenia zostaje', () => {
     const graph = buildTreeGraph(
       twoFamilies({ leftChildren: 3, rightChildren: 1, bridge: { left: 0, right: 0 } }),
     )
@@ -238,6 +238,83 @@ describe('orderNodes (bloki rodzeństwa, §6.4 reguły twarde 1 i 2)', () => {
   it('para mosta już na skrajach zostaje na miejscu, rodzeństwo w kolejności urodzenia', () => {
     const graph = buildTreeGraph(twoFamilies({ bridge: { left: 3, right: 0 } }))
     expect(personRow(graph, 1)).toEqual([a(0), a(1), a(2), a(3), b(0), b(1), b(2)])
+  })
+
+  describe('strona rodzin pary mosta (rodzina mężczyzny po lewej)', () => {
+    const middle = { bridge: { left: 1, right: 1 } }
+    const leftOf = (row: string[]) => row[0]!.charAt(0)
+
+    it('mężczyzna z rodziny A, kobieta z rodziny B: A po lewej', () => {
+      // Without sexes this case puts B on the left (fewer birth-order breaks).
+      const data = withSexes(twoFamilies(middle), { p_a2: 'male', p_b2: 'female' })
+      expect(personRow(buildTreeGraph(data), 1)).toEqual([a(0), a(2), a(3), a(1), b(1), b(0), b(2)])
+    })
+
+    it('kobieta z rodziny A, mężczyzna z rodziny B: B po lewej', () => {
+      // Without sexes this case puts A on the left.
+      const data = withSexes(twoFamilies(), { p_a2: 'female', p_b1: 'male' })
+      expect(personRow(buildTreeGraph(data), 1)).toEqual([b(1), b(2), b(0), a(1), a(0), a(2), a(3)])
+    })
+
+    it('zmiana albo dopisanie daty urodzenia nie zamienia rodzin stronami', () => {
+      for (const [options, sexes, expected] of [
+        [middle, { p_a2: 'male', p_b2: 'female' }, 'a'],
+        [{}, { p_a2: 'female', p_b1: 'male' }, 'b'],
+      ] as const) {
+        const base = withSexes(twoFamilies(options), sexes)
+        const children = base.persons.filter((p) => /^p_[ab]\d$/.test(p.id)).map((p) => p.id)
+        for (const id of children) {
+          for (const year of [1900, 1949, 1956, 2000]) {
+            const data = {
+              ...base,
+              persons: base.persons.map((p) =>
+                p.id === id ? { ...p, birth: { date: { year } } } : p,
+              ),
+            }
+            expect(leftOf(personRow(buildTreeGraph(data), 1)), `${id} ${year}`).toBe(expected)
+          }
+        }
+        for (const [family, parents] of [
+          ['a', ['p_a_ojciec', 'p_a_matka']],
+          ['b', ['p_b_ojciec', 'p_b_matka']],
+        ] as const) {
+          for (const year of [1900, 2000]) {
+            const id = `p_${family}9`
+            const data: FamilyData = {
+              ...base,
+              persons: [
+                ...base.persons,
+                { ...base.persons[0]!, id, givenNames: id, birth: { date: { year } } },
+              ],
+              parentChild: [
+                ...base.parentChild,
+                ...parents.map((parentId) => ({
+                  parentId,
+                  childId: id,
+                  type: 'biological' as const,
+                })),
+              ],
+            }
+            expect(leftOf(personRow(buildTreeGraph(data), 1)), `${id} ${year}`).toBe(expected)
+          }
+        }
+      }
+    })
+
+    it('para tej samej płci wybiera stronę jak przy płci nieznanej', () => {
+      const data = withSexes(twoFamilies(middle), { p_a2: 'male', p_b2: 'male' })
+      expect(personRow(buildTreeGraph(data), 1)).toEqual([b(0), b(2), b(1), a(1), a(0), a(2), a(3)])
+    })
+
+    it('dwie pary mosta o przeciwnych wskazaniach: rozstrzyga para starszego dziecka z rodziny wcześniejszych rodziców', () => {
+      // a2 (man) with b1 (woman) says A left; a4 (woman) with b3 (man) says B left. The couple
+      // of a2, born before a4, decides: A on the left; both couples stand at the seam.
+      const data = withSexes(
+        twoFamilies({ bridge: { left: 1, right: 0 }, secondBridge: { left: 3, right: 2 } }),
+        { p_a2: 'male', p_b1: 'female', p_a4: 'female', p_b3: 'male' },
+      )
+      expect(personRow(buildTreeGraph(data), 1)).toEqual([a(0), a(2), a(1), b(0), a(3), b(2), b(1)])
+    })
   })
 
   it('kolejność bloków nie zależy od kolejności danych wejściowych', () => {

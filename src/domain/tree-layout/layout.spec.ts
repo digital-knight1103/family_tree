@@ -117,16 +117,22 @@ describe('layoutTree (dane demo, właściwości §6.4)', () => {
     expect(countCrossings(result.edges)).toBe(0)
   })
 
-  it('rodzeństwo jest w kolejności urodzenia', async () => {
+  it('rodzeństwo jest w kolejności urodzenia (poza parą z dwóch rodzin, reguła 2)', async () => {
     const graph = buildTreeGraph(demo)
     const result = await layoutTree(graph)
     const nodes = byId(result)
     const birthKey = (nodeId: string) =>
       genDateSortKey(demo.persons.find((p) => `person:${p.id}` === nodeId)?.birth?.date)
+    const hasParents = (id: string) => demo.parentChild.some((r) => r.childId === id)
+    const bridging = new Set(
+      demo.unions
+        .filter((u) => u.partnerIds.every(hasParents))
+        .flatMap((u) => u.partnerIds.map((id) => `person:${id}`)),
+    )
     for (const union of graph.nodes) {
       if (union.kind !== 'union') continue
       const children = result.edges
-        .filter((e) => e.kind === 'child' && e.source === union.id)
+        .filter((e) => e.kind === 'child' && e.source === union.id && !bridging.has(e.target))
         .map((e) => e.target)
         .sort((a, b) => nodes.get(a)!.x - nodes.get(b)!.x)
       for (let i = 1; i < children.length; i++) {
@@ -900,4 +906,37 @@ describe('layoutTree (bloki rodzeństwa, §6.4 reguły twarde 1–4)', () => {
     expect(await layout(data)).toEqual(first)
     expect(await layout(reversed)).toEqual(first)
   })
+
+  it('dwie pary między tymi samymi rodzinami: obie na styku, reguła 1, jedyny wyjątek od reguły 3', async () => {
+    const data = twoFamilies({ bridge: { left: 1, right: 0 }, secondBridge: { left: 3, right: 2 } })
+    const result = await layout(data)
+    expect(siblingBlocksContiguous(result, data)).toEqual([])
+    // Known exception to rule 3: with two couples there is only one seam, so one family's line
+    // must reach past the other's first child. Whatever the heights, one drop crosses the other
+    // family's horizontal line.
+    expect(siblingLinesOverlap(result)).toEqual(['union:u_2 i union:u_1: przecinają się'])
+    const a = [0, 1, 2, 3].map(leftChild)
+    const b = [0, 1, 2].map(rightChild)
+    const row = [...a, ...b].sort((p, q) => xOf(result, p).x - xOf(result, q).x)
+    // Both couples at the seam, between A's other children and B's (in A's birth order).
+    expect(row).toEqual(['p_a1', 'p_a3', 'p_a2', 'p_b1', 'p_a4', 'p_b3', 'p_b2'])
+    for (const [l, r] of [
+      [leftChild(1), rightChild(0)],
+      [leftChild(3), rightChild(2)],
+    ] as const) {
+      const [p, q] = [xOf(result, l), xOf(result, r)].sort((m, n) => m.x - n.x) as [
+        PositionedNode,
+        PositionedNode,
+      ]
+      expect(Math.abs(q.x - (p.x + p.width) - 40), `${l} – ${r}`).toBeLessThanOrEqual(0.5)
+    }
+  })
+
+  it('na danych demo i dużej rodzinie: rodzeństwo w blokach, linie się nie nakładają', async () => {
+    for (const data of [demo, buildLargeFamily()]) {
+      const result = await layout(data)
+      expect(siblingBlocksContiguous(result, data)).toEqual([])
+      expect(siblingLinesOverlap(result)).toEqual([])
+    }
+  }, 20_000)
 })
