@@ -23,7 +23,7 @@ const splashOpen = ref(true)
 
 <template>
   <AppBackdrop />
-  <div data-testid="app-shell" class="flex h-screen flex-col">
+  <div data-testid="app-shell" class="flex h-screen flex-col" :inert="splashOpen || undefined">
     <header
       class="glass-strong relative z-10 flex shrink-0 items-center justify-between gap-4 border-x-0 border-t-0 px-4 py-2"
     >

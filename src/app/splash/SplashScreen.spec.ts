@@ -48,6 +48,29 @@ describe('SplashScreen', () => {
     wrapper.unmount()
   })
 
+  it('dostaje fokus po zamontowaniu', () => {
+    const wrapper = mount(SplashScreen, { attachTo: document.body })
+
+    expect(document.activeElement).toBe(wrapper.get('[role="dialog"]').element)
+    wrapper.unmount()
+  })
+
+  it('inne klawisze (np. „/”) nie docierają do aplikacji i nie pomijają ekranu', async () => {
+    const appListener = vi.fn()
+    document.addEventListener('keydown', appListener)
+    const wrapper = mount(SplashScreen, { attachTo: document.body })
+
+    press('/')
+    press('k')
+    vi.advanceTimersByTime(SPLASH.fadeOutMs)
+    await wrapper.vm.$nextTick()
+
+    expect(appListener).not.toHaveBeenCalled()
+    expect(wrapper.emitted('done')).toBeUndefined()
+    document.removeEventListener('keydown', appListener)
+    wrapper.unmount()
+  })
+
   it('Enter pomija ekran', async () => {
     const wrapper = mount(SplashScreen, { attachTo: document.body })
 

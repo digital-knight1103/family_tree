@@ -78,11 +78,11 @@ const ADD_ROWS: Array<{ id: string; position: string; buttons: AddButton[] }> = 
     :data-unknown="view.unknown ? '' : undefined"
     :data-selected="selected ? 'true' : 'false'"
     :data-highlight="highlight"
-    class="relative flex items-center gap-2 rounded-md border border-l-4 border-glass-border px-2 text-card-foreground shadow-(--glass-shadow) backdrop-blur-md transition-opacity data-[selected=true]:ring-2 data-[selected=true]:ring-ring data-[sex=female]:border-l-sex-female data-[sex=male]:border-l-sex-male data-[sex=unknown]:border-l-muted-foreground"
+    class="relative flex items-center gap-2 rounded-md border border-l-4 border-glass-border px-2 shadow-(--glass-shadow) backdrop-blur-md transition-opacity data-[selected=true]:ring-2 data-[selected=true]:ring-ring data-[sex=female]:border-l-sex-female data-[sex=male]:border-l-sex-male data-[sex=unknown]:border-l-muted-foreground"
     :class="[
       background,
-      { 'border-dashed': view.unknown },
-      highlight === 'dimmed' ? 'opacity-40' : view.unknown ? 'opacity-70' : '',
+      view.unknown ? 'border-dashed text-muted-foreground' : 'text-card-foreground',
+      { 'opacity-40': highlight === 'dimmed' },
     ]"
     :style="{ width: `${width}px`, height: `${height}px` }"
   >

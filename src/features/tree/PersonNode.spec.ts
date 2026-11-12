@@ -109,7 +109,10 @@ describe('PersonNode', () => {
     const root = mountNode({ view: { unknown: true } }).get('[data-testid="person-node"]')
     expect(root.attributes('data-unknown')).toBeDefined()
     expect(root.classes()).toContain('border-dashed')
-    expect(root.classes()).toContain('opacity-70')
+    // Greyed by colour, not by opacity: contrast.spec checks muted-foreground on muted/60.
+    expect(root.classes()).toContain('text-muted-foreground')
+    expect(root.classes()).not.toContain('text-card-foreground')
+    expect(root.classes().some((c) => c.startsWith('opacity-'))).toBe(false)
     expect(
       mountNode().get('[data-testid="person-node"]').attributes('data-unknown'),
     ).toBeUndefined()

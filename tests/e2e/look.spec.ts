@@ -29,6 +29,12 @@ test.describe('ekran powitalny', () => {
     await page.goto('/')
     const splash = page.getByRole('dialog', { name: 'Ekran powitalny' })
     await expect(splash).toBeVisible()
+    const search = page.getByRole('combobox', { name: 'Szukaj osoby' })
+
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('/')
+    await expect(splash).toBeVisible()
+    await expect(search).not.toBeFocused()
 
     await page.keyboard.press('Escape')
     await expect(splash).toBeHidden({ timeout: 1000 })

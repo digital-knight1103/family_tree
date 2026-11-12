@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, onMounted, useTemplateRef, watch } from 'vue'
 import { useEventListener, usePreferredReducedMotion } from '@vueuse/core'
 import { SPLASH } from '@/app/splash/splash-config'
 import { useSplash } from '@/app/splash/useSplash'
@@ -22,13 +22,17 @@ useEventListener(
   'keydown',
   (event: KeyboardEvent) => {
     if (phase.value === 'done') return
+    // No key reaches the app beneath (e.g. "/" or Ctrl+K opening search); Enter and Esc skip.
+    event.stopImmediatePropagation()
     if (event.key !== 'Enter' && event.key !== 'Escape') return
     event.preventDefault()
-    event.stopImmediatePropagation()
     skip()
   },
   { capture: true },
 )
+
+const dialog = useTemplateRef<HTMLElement>('dialog')
+onMounted(() => dialog.value?.focus())
 
 /** Leaves of the crown: [cx, cy, r]. */
 const leaves: [number, number, number][] = [
@@ -47,10 +51,12 @@ const leaves: [number, number, number][] = [
 
 <template>
   <div
+    ref="dialog"
     role="dialog"
     aria-modal="true"
     aria-label="Ekran powitalny"
-    class="splash fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center gap-8 px-6 text-center transition-opacity duration-600 ease-out"
+    tabindex="-1"
+    class="splash fixed inset-0 z-50 flex cursor-pointer flex-col items-center justify-center gap-8 px-6 text-center outline-none transition-opacity duration-600 ease-out"
     :class="{ 'opacity-0': phase === 'leaving' }"
     @click="skip()"
   >
