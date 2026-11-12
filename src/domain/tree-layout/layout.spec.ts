@@ -940,3 +940,93 @@ describe('layoutTree (bloki rodzeństwa, §6.4 reguły twarde 1–4)', () => {
     }
   }, 20_000)
 })
+
+describe('layoutTree (osobne grupy, zdublowany związek, zaokrąglenie)', () => {
+  /** Parents with three children, the youngest with a partner. */
+  const main = {
+    persons: [
+      { id: 'p_a1' },
+      { id: 'p_a2' },
+      { id: 'p_c1', birth: { date: { year: 1970 } } },
+      { id: 'p_c2', birth: { date: { year: 1972 } } },
+      { id: 'p_c3', birth: { date: { year: 1974 } } },
+      { id: 'p_w' },
+    ],
+    parentChild: [
+      ['p_a1', 'p_c1'],
+      ['p_a2', 'p_c1'],
+      ['p_a1', 'p_c2'],
+      ['p_a2', 'p_c2'],
+      ['p_a1', 'p_c3'],
+      ['p_a2', 'p_c3'],
+    ] as Array<[string, string]>,
+    unions: [
+      ['p_a1', 'p_a2'],
+      ['p_c3', 'p_w'],
+    ] as Array<[string, string]>,
+  }
+  /** The main tree with a smaller separate group of a couple and its `children` beside it. */
+  const withGroup = (children: number) => {
+    const kids = Array.from({ length: children }, (_, i) => `p_z${i + 1}`)
+    return buildFamily({
+      persons: [...main.persons, { id: 'p_zm' }, { id: 'p_zf' }, ...kids.map((id) => ({ id }))],
+      parentChild: [
+        ...main.parentChild,
+        ...kids.flatMap((id): Array<[string, string]> => [
+          ['p_zm', id],
+          ['p_zf', id],
+        ]),
+      ],
+      unions: [...main.unions, ['p_zm', 'p_zf']],
+    })
+  }
+
+  it('zmiana osobnej grupy nie przesuwa głównego drzewa', async () => {
+    const mainIds = new Set([
+      ...main.persons.map((p) => `person:${p.id}`),
+      'union:u_1',
+      'union:u_2',
+    ])
+    const positions = async (children: number) =>
+      (await layout(withGroup(children))).nodes
+        .filter((n) => mainIds.has(n.id))
+        .map(({ id, x, y }) => ({ id, x, y }))
+    expect(await positions(2)).toEqual(await positions(1))
+  })
+
+  it('zdublowany związek tej samej pary: ELK rozsuwa punkty związków, układ deterministyczny', async () => {
+    const data = buildFamily({
+      persons: [{ id: 'p_m' }, { id: 'p_f' }, { id: 'p_c' }],
+      parentChild: [
+        ['p_m', 'p_c'],
+        ['p_f', 'p_c'],
+      ],
+      unions: [
+        ['p_m', 'p_f'],
+        ['p_m', 'p_f'],
+      ],
+    })
+    const result = await layout(data)
+    expect(await layout(data)).toEqual(result)
+    const nodes = byId(result)
+    const [u1, u2] = [nodes.get('union:u_1')!, nodes.get('union:u_2')!]
+    // Both are planned at the middle of the couple; ELK keeps 8 px between them.
+    expect(u2.x - (u1.x + u1.width)).toBe(8)
+  })
+
+  it('wszystkie współrzędne węzłów i linii mają najwyżej dwa miejsca po przecinku', async () => {
+    const odd = (personId: string) => 200 + (personId.length % 5) * 37
+    for (const data of [demo, buildLargeFamily()]) {
+      for (const options of [{}, { personWidth: odd }]) {
+        const result = await layoutTree(buildTreeGraph(data), options)
+        const values = [
+          result.width,
+          result.height,
+          ...result.nodes.flatMap((n) => [n.x, n.y]),
+          ...result.edges.flatMap((e) => e.points.flatMap((p) => [p.x, p.y])),
+        ]
+        expect(values.filter((v) => Math.round(v * 100) / 100 !== v)).toEqual([])
+      }
+    }
+  }, 20_000)
+})

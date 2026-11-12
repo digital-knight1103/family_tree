@@ -1,7 +1,7 @@
 import ELK, { type ElkNode, type ElkPort } from 'elkjs/lib/elk.bundled.js'
 import { connectedComponents } from './components'
 import type { TreeEdge, TreeGraph, TreeNode } from './graph'
-import { placeRows } from './placement'
+import { placeRows, roundPx } from './placement'
 import { orderNodes } from './row-order'
 
 /** Smallest (and default) person node; `LayoutOptions` can make it wider and taller. */
@@ -138,7 +138,11 @@ export async function layoutTree(
   options: LayoutOptions = {},
 ): Promise<TreeLayout> {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]))
-  const sizeOf = (nodeId: string, measure: LayoutOptions['personWidth'], least: number) => {
+  const sizeOf = (
+    nodeId: string,
+    measure: LayoutOptions['personWidth' | 'personHeight'],
+    least: number,
+  ) => {
     const node = byId.get(nodeId)!
     const size = node.kind === 'person' ? measure?.(node.personId) : undefined
     return size !== undefined && Number.isFinite(size) && size > least ? size : least
@@ -151,9 +155,9 @@ export async function layoutTree(
   const centreOf = (nodeId: string) =>
     placement.personX.get(nodeId) ?? placement.unions.get(nodeId)!.x
 
-  // A person row is as tall as its tallest person: ELK gets every node of the row at that height,
-  // so the row's tops line up and the union row (with the partner lines) lies below all of them.
-  // A union row is as tall as its lowest partner line needs.
+  // Every row is as tall as its tallest node, and ELK gets each node of the row at that height:
+  // in a person row the tallest person (the tops line up, the union row lies below all of them),
+  // in a union row the lowest partner line.
   const personRowHeight = new Map<number, number>()
   const unionHeight = new Map<number, number>()
   for (const node of graph.nodes) {
@@ -282,7 +286,13 @@ export async function layoutTree(
     return { ...edge, points: straighten(points) }
   })
   const width = separateGroups(graph, nodes, edges)
-  return { nodes, edges, width, height: result.height ?? 0 }
+  // ELK and the shifts add float noise to the rounded placement; nodes and line points are rounded
+  // the same way, so the lines still end on their nodes.
+  for (const point of [...nodes, ...edges.flatMap((edge) => edge.points)]) {
+    point.x = roundPx(point.x)
+    point.y = roundPx(point.y)
+  }
+  return { nodes, edges, width: roundPx(width), height: roundPx(result.height ?? 0) }
 }
 
 /** Down from the middle of the person to the union's partner line, then along it to the union. */

@@ -1,3 +1,4 @@
+import { connectedComponents } from './components'
 import type { TreeGraph, TreeNode } from './graph'
 
 /** Where a union point stands relative to its partners. */
@@ -46,15 +47,16 @@ interface Expression {
  * by side stand `partnerSpacing` apart, every other neighbour at least `spacing` apart (between
  * the partners of one union, neighbours who are not a couple stand exactly `spacing` apart). Each
  * family (a union point or a single parent) should stand above the middle of its children:
- * halfway between the centres of the leftmost and the rightmost child, their partners not
- * counted. Where the rows leave no room for that, the sum of squared deviations is the smallest
- * possible.
+ * halfway between the centres of the leftmost and the rightmost child in the nearest row, their
+ * partners not counted. Where the rows leave no room for that, the sum of squared deviations is
+ * the smallest possible. Positions are rounded to 0.01 px.
  *
  * Partners standing next to each other form a rigid unit; the unit positions are found by
  * accelerated projected gradient descent (FISTA with restarts), the projection onto the spacing
  * constraints of a row being an isotonic regression (pool adjacent violators). It starts from
- * packed rows, and a much weaker pull between neighbours (`COMPACT_WEIGHT`) closes the gaps that
- * no family needs. Everything runs in a fixed order, so the result is deterministic.
+ * packed rows, and a much weaker pull between neighbours of one connected group (`COMPACT_WEIGHT`)
+ * closes the gaps that no family needs. Everything runs in a fixed order, so the result is
+ * deterministic.
  */
 export function placeRows(
   graph: TreeGraph,
@@ -99,6 +101,9 @@ export function placeRows(
   const unitOf = new Map<string, number>()
   const offset = new Map<string, number>()
   const rowUnits: Array<{ units: number[]; gaps: number[] }> = []
+  /** The connected group of each unit (see `connectedComponents`). */
+  const componentOf = connectedComponents(graph)
+  const unitComponent: number[] = []
   /** The gap a locked person keeps to the one on its left. */
   const lockedGap = new Map<string, number>()
   let unitCount = 0
@@ -127,6 +132,7 @@ export function placeRows(
       unitOf.set(id, unitCount)
       offset.set(id, 0)
       units.push(unitCount)
+      unitComponent.push(componentOf.get(id)!)
       initial.push(cursor + width / 2)
       cursor += width
       unitCount++
@@ -164,7 +170,8 @@ export function placeRows(
     unionPoints.set(node.id, { expression, level: between })
   }
 
-  // Families: residual = family position - middle of its outermost children.
+  // Families: residual = family position - middle of its outermost children in the nearest row
+  // (a child can stand lower, next to a partner from a younger generation).
   const childrenOf = new Map<string, string[]>()
   for (const edge of graph.edges) {
     if (edge.kind === 'child') {
@@ -174,7 +181,10 @@ export function placeRows(
   const residuals: Expression[] = []
   for (const [source, children] of childrenOf) {
     const head = unionPoints.get(source)?.expression ?? at(source)
-    const byIndex = [...children].sort((a, b) => indexInRow.get(a)! - indexInRow.get(b)!)
+    const nearest = Math.min(...children.map((id) => byId.get(id)!.generation))
+    const byIndex = children
+      .filter((id) => byId.get(id)!.generation === nearest)
+      .sort((a, b) => indexInRow.get(a)! - indexInRow.get(b)!)
     const first = byIndex[0]!
     const last = byIndex[byIndex.length - 1]!
     residuals.push({
@@ -186,10 +196,12 @@ export function placeRows(
       constant: head.constant - (offset.get(first)! + offset.get(last)!) / 2,
     })
   }
-  // Much weaker: neighbours in a row stand close together (equal gaps where they have room).
+  // Much weaker: neighbours of one group in a row stand close together (equal gaps where they
+  // have room). Separate groups do not pull at each other, `layoutTree` moves them apart.
   const scale = Math.sqrt(COMPACT_WEIGHT)
   for (const { units } of rowUnits) {
     for (let j = 1; j < units.length; j++) {
+      if (unitComponent[units[j]!] !== unitComponent[units[j - 1]!]) continue
       residuals.push({
         terms: [
           { unit: units[j]!, coefficient: scale },
@@ -202,10 +214,10 @@ export function placeRows(
 
   const z = solve(initial, residuals, rowUnits)
   const personX = new Map<string, number>()
-  for (const row of rows.values()) for (const id of row) personX.set(id, centreOf(id, z))
+  for (const row of rows.values()) for (const id of row) personX.set(id, roundPx(centreOf(id, z)))
   const unions = new Map<string, UnionPlacement>()
   for (const [id, { expression, level }] of unionPoints) {
-    unions.set(id, { x: evaluate(expression, z), level })
+    unions.set(id, { x: roundPx(evaluate(expression, z)), level })
   }
   const freeSpots = new Map<number, number[]>()
   for (const [generation, row] of rows) {
@@ -216,10 +228,13 @@ export function placeRows(
       if (!locked.has(i)) spots.push((side(row[i]!, 1) + side(row[i + 1]!, -1)) / 2)
     }
     spots.push(side(row[row.length - 1]!, 1) + spacing)
-    freeSpots.set(generation, spots)
+    freeSpots.set(generation, spots.map(roundPx))
   }
   return { personX, unions, freeSpots }
 }
+
+/** To 0.01 px: the solver (and ELK's arithmetic) leaves noise such as `227.9999977905`. */
+export const roundPx = (value: number) => Math.round(value * 100) / 100
 
 function evaluate({ terms, constant }: Expression, z: number[]): number {
   let value = constant
