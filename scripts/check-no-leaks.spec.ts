@@ -18,6 +18,12 @@ describe('checkTrackedFiles', () => {
     expect(checkTrackedFiles(['public/logo.png', 'src/assets/hero.webp'])).toEqual([])
   })
 
+  it('allows exactly docs/screenshot.png, not other images in docs/', () => {
+    expect(checkTrackedFiles(['docs/screenshot.png'])).toEqual([])
+    expect(checkTrackedFiles(['docs/zdjecie.png'])).toHaveLength(1)
+    expect(checkTrackedFiles(['docs/plans/screenshot.png'])).toHaveLength(1)
+  })
+
   it('flags images elsewhere, case-insensitively', () => {
     const result = checkTrackedFiles(['docs/foto.PNG', 'data/seed/a.jpg', 'x/b.jpeg', 'x/c.webp'])
     expect(result).toHaveLength(4)

@@ -17,6 +17,7 @@ Drzewo Rodzinne: prywatna, lokalna aplikacja (Vue 3 + TypeScript) do budowania i
 ## Struktura
 
 - `src/app/`: start aplikacji, router, główny komponent
+- `src/app/splash/`: ekran powitalny (raz na sesję karty; stałe w `splash-config.ts`, przebieg w `useSplash.ts`)
 - `src/domain/`: model, daty, relacje, układ drzewa (czysty TS, bez Vue)
 - `src/domain/tree-layout/`: układ drzewa (pokolenia, graf, kolejność w rzędach, pozycje x w `placement.ts`; elkjs tylko prowadzi linie)
 - `src/data/`: dostęp do danych (`repository.ts`; HTTP w dev, statyczny seed w buildzie) i kolejka zapisów
@@ -28,7 +29,9 @@ Drzewo Rodzinne: prywatna, lokalna aplikacja (Vue 3 + TypeScript) do budowania i
 - `src/app/SidePanel.vue`: panel boczny (karta, edycja, dodawanie, lista „Do sprawdzenia”)
 - `src/stores/`: store rodziny (Pinia); dane zmienia się wyłącznie przez `update(...)`
 - `src/stores/selection.ts`: zaznaczona osoba i oczekujące wyśrodkowanie; `src/stores/panel.ts`: widok panelu (`openCard`, `openReview`, powrót do listy); `src/stores/photos.ts`: adresy, upload i usuwanie zdjęć
-- `src/components/ui/` (shadcn-vue; CLI tu nie działa, komponenty dopisywane ręcznie we wzorze reka-nova), `src/shared/`, `src/styles/`
+- `src/stores/theme.ts`: motyw jasny lub ciemny (wybór w `localStorage`, inaczej według systemu; ten sam klucz czyta skrypt w `index.html` przed pierwszym malowaniem)
+- `src/components/ui/` (shadcn-vue; CLI tu nie działa, komponenty dopisywane ręcznie we wzorze reka-nova), `src/shared/`
+- `src/styles/globals.css`: tokeny kolorów obu motywów (`:root` i `.dark`, w tym `--glass*`, `--tint-*`, `--splash-*`), narzędzia `glass` i `glass-strong`; kontrast pilnuje `contrast.spec.ts`
 - `tests/e2e/`: testy Playwright; `tests/fixtures/`: dane i pomocniki testowe (alias `@tests/`)
 - `data/seed/`: wymyślona rodzina demo; `data/family/`: prawdziwe dane (ignorowane)
 - `vite-plugins/`: wtyczka danych tylko dla `pnpm dev` (endpointy `/__data`, zapis atomowy, kopie w `.backups/`, rewizje)

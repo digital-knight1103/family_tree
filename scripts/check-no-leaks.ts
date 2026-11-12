@@ -7,6 +7,8 @@ const CANARY = 'CANARY_LEAK_TEST_7f3a'
 const DEMO_SURNAME = 'Kowalczyk'
 const IMAGE_EXTENSION = /\.(webp|jpe?g|png)$/i
 const ALLOWED_IMAGE_PREFIXES = ['public/', 'src/assets/']
+/** The README screenshot of the demo family; one exact path, not the whole docs/ folder. */
+const ALLOWED_IMAGE_PATHS = ['docs/screenshot.png']
 
 export function checkTrackedFiles(trackedPaths: string[]): string[] {
   const violations: string[] = []
@@ -15,6 +17,7 @@ export function checkTrackedFiles(trackedPaths: string[]): string[] {
       violations.push(`Plik z folderu danych jest śledzony przez git: ${trackedPath}`)
     } else if (
       IMAGE_EXTENSION.test(trackedPath) &&
+      !ALLOWED_IMAGE_PATHS.includes(trackedPath) &&
       !ALLOWED_IMAGE_PREFIXES.some((prefix) => trackedPath.startsWith(prefix))
     ) {
       violations.push(`Zdjęcie poza dozwolonymi folderami jest śledzone przez git: ${trackedPath}`)

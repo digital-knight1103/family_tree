@@ -2,7 +2,7 @@
 
 Prywatna, lokalna aplikacja do budowania i przeglądania drzewa genealogicznego rodziny. Pozwala szybko dodawać osoby i relacje, zapisywać niepewne fakty, notatki i poszlaki oraz sprawdzać, co jeszcze trzeba potwierdzić. Interfejs jest po polsku.
 
-Zrzut ekranu zostanie dodany po etapie drzewa.
+![Drzewo Rodzinne: rodzina demo w motywie jasnym, zaznaczona osoba i jej karta](docs/screenshot.png)
 
 ## Wymagania
 
