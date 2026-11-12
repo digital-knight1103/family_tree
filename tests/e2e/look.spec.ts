@@ -2,11 +2,19 @@ import { SPLASH } from '@/app/splash/splash-config'
 import { expect, test } from './fixtures/test'
 import { resetDataDir } from './fixtures/data-dir'
 
+const CLOCK_START = new Date('2026-01-01T12:00:00').getTime()
+
 test.beforeEach(() => resetDataDir('seed-copy'))
 test.afterEach(() => resetDataDir('seed-copy'))
 
 test.describe('ekran powitalny', () => {
   test.use({ splash: true })
+
+  // Splash timers run on a paused fake clock, so the checks do not depend on how fast the machine is.
+  test.beforeEach(async ({ page }) => {
+    await page.clock.install({ time: CLOCK_START })
+    await page.clock.pauseAt(CLOCK_START + 1000)
+  })
 
   test('start → ekran powitalny → drzewo', async ({ page }) => {
     await page.goto('/')
@@ -15,9 +23,11 @@ test.describe('ekran powitalny', () => {
     await expect(splash).toContainText(SPLASH.title)
     await expect(splash).toContainText(SPLASH.quote)
 
-    await page.waitForTimeout(SPLASH.durationMs - 500)
+    await page.clock.runFor(SPLASH.durationMs - 1)
     await expect(splash).toBeVisible()
-    await expect(splash).toBeHidden({ timeout: 2000 })
+    await page.clock.runFor(1 + SPLASH.fadeOutMs)
+    await expect(splash).toBeHidden()
+    await page.clock.resume()
     await expect(page.getByTestId('person-node')).toHaveCount(20)
 
     await page.reload()
@@ -37,7 +47,8 @@ test.describe('ekran powitalny', () => {
     await expect(search).not.toBeFocused()
 
     await page.keyboard.press('Escape')
-    await expect(splash).toBeHidden({ timeout: 1000 })
+    await page.clock.runFor(SPLASH.fadeOutMs)
+    await expect(splash).toBeHidden()
     await expect(page.getByRole('combobox', { name: 'Szukaj osoby' })).not.toBeFocused()
   })
 
@@ -46,9 +57,10 @@ test.describe('ekran powitalny', () => {
     await page.goto('/')
     const splash = page.getByRole('dialog', { name: 'Ekran powitalny' })
     await expect(splash).toBeVisible()
-    await page.waitForTimeout(SPLASH.reducedMotionDurationMs - 500)
+    await page.clock.runFor(SPLASH.reducedMotionDurationMs - 1)
     await expect(splash).toBeVisible()
-    await expect(splash).toBeHidden({ timeout: 1500 })
+    await page.clock.runFor(1)
+    await expect(splash).toBeHidden()
   })
 })
 
