@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import seed from '@seed/demo-family.json'
-import { familyDataSchema } from '@/domain/schema'
+import { familyDataSchema, type FamilyData } from '@/domain/schema'
 import { buildFamily } from '@tests/fixtures/build-family'
+import { leftChild, rightChild, twoFamilies } from '@tests/fixtures/two-families'
 import { buildTreeGraph } from './graph'
 import { orderNodes } from './row-order'
 
@@ -195,5 +196,99 @@ describe('orderNodes', () => {
     }
     const ids = (d: typeof data) => orderNodes(buildTreeGraph(d)).map((n) => n.id)
     expect(ids(reversed)).toEqual(ids(data))
+  })
+})
+
+describe('orderNodes (bloki rodzeństwa, §6.4 reguły twarde 1 i 2)', () => {
+  const a = (i: number) => leftChild(i).slice('p_'.length)
+  const b = (i: number) => rightChild(i).slice('p_'.length)
+  const reversedInput = (data: FamilyData): FamilyData => ({
+    ...data,
+    persons: [...data.persons].reverse(),
+    parentChild: [...data.parentChild].reverse(),
+    unions: [...data.unions].reverse(),
+  })
+
+  it('para z dwóch rodzin stoi na styku ciągłych bloków, reszta w kolejności urodzenia', () => {
+    expect(personRow(buildTreeGraph(twoFamilies()), 1)).toEqual([
+      a(0),
+      a(2),
+      a(3),
+      a(1),
+      b(0),
+      b(1),
+      b(2),
+    ])
+  })
+
+  it('para mosta w środku obu rodzin przesuwa się na styk, kierunek łamie najmniej kolejności urodzenia', () => {
+    // A on the left would put a2 after a3, a4 and b2 before b1 (3 pairs against birth order);
+    // B on the left only b2 after b3 and a2 before a1 (2 pairs).
+    const graph = buildTreeGraph(twoFamilies({ bridge: { left: 1, right: 1 } }))
+    expect(personRow(graph, 1)).toEqual([b(0), b(2), b(1), a(1), a(0), a(2), a(3)])
+  })
+
+  it('najstarsze dziecko w parze mosta: jego rodzina staje po prawej, kolejność urodzenia zostaje', () => {
+    const graph = buildTreeGraph(
+      twoFamilies({ leftChildren: 3, rightChildren: 1, bridge: { left: 0, right: 0 } }),
+    )
+    expect(personRow(graph, 1)).toEqual([b(0), a(0), a(1), a(2)])
+  })
+
+  it('para mosta już na skrajach zostaje na miejscu, rodzeństwo w kolejności urodzenia', () => {
+    const graph = buildTreeGraph(twoFamilies({ bridge: { left: 3, right: 0 } }))
+    expect(personRow(graph, 1)).toEqual([a(0), a(1), a(2), a(3), b(0), b(1), b(2)])
+  })
+
+  it('kolejność bloków nie zależy od kolejności danych wejściowych', () => {
+    const data = twoFamilies({ bridge: { left: 2, right: 1 }, bridgeChildren: 2 })
+    const ids = (d: FamilyData) => orderNodes(buildTreeGraph(d)).map((n) => n.id)
+    expect(ids(reversedInput(data))).toEqual(ids(data))
+  })
+
+  it('osoba z partnerami z dwóch innych rodzin: obie pary obok niej, reguła deterministyczna', () => {
+    // r2 (family R) has partners p1 (family P) and s3 (family S); each family has three children.
+    // One row cannot keep all three blocks whole: the family with the earliest-born parents (P)
+    // and R keep theirs, s3 stands next to r2, away from its siblings.
+    const families = { p: 1919, r: 1920, s: 1921 }
+    const persons = Object.entries(families).flatMap(([family, year]) => [
+      { id: `p_${family}_ojciec`, birth: { date: { year } } },
+      { id: `p_${family}_matka`, birth: { date: { year } } },
+      ...[0, 1, 2].map((i) => ({ id: `p_${family}${i + 1}`, birth: { date: { year: 1950 + i } } })),
+    ])
+    const parentChild = Object.keys(families).flatMap((family) =>
+      [1, 2, 3].flatMap((i): Array<[string, string]> => [
+        [`p_${family}_ojciec`, `p_${family}${i}`],
+        [`p_${family}_matka`, `p_${family}${i}`],
+      ]),
+    )
+    const data = buildFamily({
+      persons,
+      parentChild,
+      unions: [
+        ['p_p_ojciec', 'p_p_matka'],
+        ['p_r_ojciec', 'p_r_matka'],
+        ['p_s_ojciec', 'p_s_matka'],
+        ['p_r2', 'p_p1'],
+        ['p_r2', 'p_s3'],
+      ],
+    })
+    const row = personRow(buildTreeGraph(data), 1)
+    const partnersOf: Record<string, string[]> = { r2: ['p1', 's3'], p1: ['r2'], s3: ['r2'] }
+    /** Rule 1: between the outermost siblings stand only siblings and their partners. */
+    const whole = (family: string) => {
+      const at = row.flatMap((id, i) => (id.startsWith(family) ? [i] : []))
+      return row
+        .slice(at[0], at[at.length - 1]! + 1)
+        .every(
+          (id) =>
+            id.startsWith(family) ||
+            row.some((sibling) => sibling.startsWith(family) && partnersOf[sibling]?.includes(id)),
+        )
+    }
+    expect(Math.abs(row.indexOf('r2') - row.indexOf('p1'))).toBe(1)
+    expect(Math.abs(row.indexOf('r2') - row.indexOf('s3'))).toBe(1)
+    expect([whole('p'), whole('r'), whole('s')]).toEqual([true, true, false])
+    expect(personRow(buildTreeGraph(reversedInput(data)), 1)).toEqual(row)
   })
 })

@@ -5,7 +5,21 @@ import { genDateSortKey } from '@/domain/dates'
 import { familyDataSchema, type FamilyData } from '@/domain/schema'
 import { buildFamily } from '@tests/fixtures/build-family'
 import { buildLargeFamily } from '@tests/fixtures/large-family'
-import { centerX, countCrossings, segments } from '@tests/fixtures/layout-metrics'
+import {
+  centerX,
+  countCrossings,
+  familyCentreDeviation,
+  segments,
+  siblingBlocksContiguous,
+  siblingLinesOverlap,
+} from '@tests/fixtures/layout-metrics'
+import {
+  bridgeChild,
+  leftChild,
+  rightChild,
+  twoFamilies,
+  type TwoFamiliesOptions,
+} from '@tests/fixtures/two-families'
 import { buildTreeGraph, type TreeGraph } from './graph'
 import { layoutTree, PERSON_NODE, type PositionedNode, type TreeLayout } from './layout'
 
@@ -803,4 +817,87 @@ describe('layoutTree (wysokość węzła i odstęp w rzędzie)', () => {
       }
     },
   )
+})
+
+describe('layoutTree (bloki rodzeństwa, §6.4 reguły twarde 1–4)', () => {
+  const variants: Array<[string, TwoFamiliesOptions]> = [
+    ['4 + 3, para mosta nie na skrajach', {}],
+    ['4 + 3, para mosta w środku obu rodzin', { bridge: { left: 1, right: 1 } }],
+    ['para mosta już na skrajach', { bridge: { left: 3, right: 0 } }],
+    ['4 + 4', { rightChildren: 4, bridge: { left: 1, right: 2 } }],
+    ['3 + 1', { leftChildren: 3, rightChildren: 1, bridge: { left: 0, right: 0 } }],
+    ['rodzina B z samotnym rodzicem', { singleRightParent: true, bridge: { left: 1, right: 1 } }],
+    ['para mosta z własnymi dziećmi', { bridgeChildren: 3 }],
+  ]
+  const optionsOf = (options: TwoFamiliesOptions) => ({
+    leftChildren: options.leftChildren ?? 4,
+    rightChildren: options.rightChildren ?? 3,
+    bridge: options.bridge ?? { left: 1, right: 0 },
+  })
+  const xOf = (result: TreeLayout, personId: string) => byId(result).get(`person:${personId}`)!
+
+  it.each(variants)('%s: reguła 1, każde rodzeństwo w ciągłym bloku', async (_, options) => {
+    const data = twoFamilies(options)
+    expect(siblingBlocksContiguous(await layout(data), data)).toEqual([])
+  })
+
+  it.each(variants)(
+    '%s: reguła 2, para na styku bloków (40 px), reszta w kolejności urodzenia',
+    async (_, options) => {
+      const data = twoFamilies(options)
+      const result = await layout(data)
+      const { leftChildren, rightChildren, bridge } = optionsOf(options)
+      const a = Array.from({ length: leftChildren }, (_, i) => leftChild(i))
+      const b = Array.from({ length: rightChildren }, (_, i) => rightChild(i))
+      const row = [...a, ...b].sort((p, q) => xOf(result, p).x - xOf(result, q).x)
+      // Either family may stand on the left (the one that breaks fewer birth orders, see
+      // row-order.spec.ts); the joining partners stand at the seam, facing each other.
+      const aOnLeft = row[0]!.startsWith('p_a')
+      const [first, firstBridge, second, secondBridge] = aOnLeft
+        ? [a, leftChild(bridge.left), b, rightChild(bridge.right)]
+        : [b, rightChild(bridge.right), a, leftChild(bridge.left)]
+      expect(row).toEqual([
+        ...first.filter((id) => id !== firstBridge),
+        firstBridge,
+        secondBridge,
+        ...second.filter((id) => id !== secondBridge),
+      ])
+      const leftNode = xOf(result, firstBridge)
+      const rightNode = xOf(result, secondBridge)
+      expect(Math.abs(rightNode.x - (leftNode.x + leftNode.width) - 40)).toBeLessThanOrEqual(0.5)
+    },
+  )
+
+  it.each(variants)('%s: reguła 3, linie rodzeństwa się nie nakładają', async (_, options) => {
+    expect(siblingLinesOverlap(await layout(twoFamilies(options)))).toEqual([])
+  })
+
+  it.each(variants)('%s: reguła 4, rodzice nad środkiem swojego bloku', async (_, options) => {
+    const deviations = familyCentreDeviation(await layout(twoFamilies(options)))
+    for (const [family, deviation] of deviations) {
+      expect(deviation, family).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('para mosta z dziećmi: dzieci w rzędzie niżej pod nią, w kolejności urodzenia', async () => {
+    const result = await layout(twoFamilies({ bridgeChildren: 3 }))
+    const children = [0, 1, 2].map(bridgeChild)
+    const xs = children.map((id) => xOf(result, id).x)
+    expect([...xs].sort((p, q) => p - q)).toEqual(xs)
+    expect(new Set(children.map((id) => xOf(result, id).y)).size).toBe(1)
+    expect(xOf(result, children[0]!).y).toBeGreaterThan(xOf(result, leftChild(0)).y)
+  })
+
+  it('układ jest deterministyczny', async () => {
+    const data = twoFamilies({ bridgeChildren: 2 })
+    const reversed: FamilyData = {
+      ...data,
+      persons: [...data.persons].reverse(),
+      parentChild: [...data.parentChild].reverse(),
+      unions: [...data.unions].reverse(),
+    }
+    const first = await layout(data)
+    expect(await layout(data)).toEqual(first)
+    expect(await layout(reversed)).toEqual(first)
+  })
 })

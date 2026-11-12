@@ -3,11 +3,30 @@ import type { TreeGraph, TreeNode } from './graph'
 
 const SWEEPS = 4
 
+/** A group of partners that must stand next to each other. */
+interface Unit {
+  /** Person node ids in their current left-to-right order. */
+  members: string[]
+  /** The order is fixed by `anchoredOrder`; the sweeps never flip it. */
+  fixed: boolean
+  /** The members' own families (see `familyOf`), without repeats, in the order of `members`. */
+  families: string[]
+}
+
+/**
+ * Units that stand together in one stretch of the row: the children of a family (with their
+ * partners), and every family joined to it by a couple whose partners both have parents in it.
+ */
+interface Cluster {
+  units: Unit[]
+  /** The joined families in the order their blocks stand, before a possible mirroring. */
+  families: string[]
+}
+
 interface Row {
   /** Person node ids, left to right. */
   order: string[]
-  /** Groups of partners that must stand next to each other, each in left-to-right order. */
-  blocks: string[][]
+  clusters: Cluster[]
 }
 
 function compare(a: string, b: string): number {
@@ -20,8 +39,9 @@ const mean = (values: number[]) => values.reduce((sum, v) => sum + v, 0) / value
 
 /**
  * Orders the nodes of every row left to right, so that partners stand next to each other (the
- * partner with parents in the tree on the left, see `anchoredOrder`), siblings follow their birth
- * order and lines cross as little as possible (barycentre sweeps over blocks of partners).
+ * partner with parents in the tree on the left, see `anchoredOrder`), siblings stand in one
+ * unbroken block in their birth order, a couple joining two such blocks stands at their seam (see
+ * `arrange`), and lines cross as little as possible (barycentre sweeps over the clusters).
  * Connected groups never interleave: each row holds the main tree first,
  * then the smaller groups in the order of `connectedComponents`.
  * Returns the graph nodes in that order; the layout engine keeps it.
@@ -61,19 +81,32 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
   }
 
   const hasParents = (id: string) => familiesOf.has(id)
-  /** Blocks whose left-to-right order is fixed by `anchoredOrder`; the sweeps never flip them. */
-  const fixed = new Set<string[]>()
+  /**
+   * The family whose sibling block a person belongs to: the couple of parents if there is one
+   * (a further single parent, e.g. adoptive, does not hold the person in its block), else the
+   * first single parent.
+   */
+  const familyOf = new Map<string, string>()
+  for (const [child, families] of familiesOf) {
+    const [own] = [...families].sort(
+      (a, b) =>
+        Number(byId.get(a)!.kind !== 'union') - Number(byId.get(b)!.kind !== 'union') ||
+        rank.get(a)! - rank.get(b)!,
+    )
+    familyOf.set(child, own!)
+  }
 
-  const rows = new Map<number, Row>()
+  const rowOrders = new Map<number, string[]>()
   for (const node of graph.nodes) {
     if (node.kind !== 'person') continue
-    const row = rows.get(node.generation) ?? { order: [], blocks: [] }
-    row.order.push(node.id)
-    rows.set(node.generation, row)
+    rowOrders.set(node.generation, [...(rowOrders.get(node.generation) ?? []), node.id])
   }
-  for (const [generation, row] of rows) row.blocks = partnerBlocks(row.order, generation)
+  const rows = new Map<number, Row>()
+  for (const [generation, order] of rowOrders) {
+    rows.set(generation, { order, clusters: clustersOf(partnerBlocks(order, generation)) })
+  }
 
-  function partnerBlocks(order: string[], generation: number): string[][] {
+  function partnerBlocks(order: string[], generation: number): Unit[] {
     const links = new Map<string, string[]>(order.map((id) => [id, []]))
     const startOf = new Map<string, number>()
     const pair = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`)
@@ -90,7 +123,7 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
     }
     for (const list of links.values()) list.sort((x, y) => rank.get(x)! - rank.get(y)!)
     const seen = new Set<string>()
-    const blocks: string[][] = []
+    const blocks: Unit[] = []
     for (const start of order) {
       if (seen.has(start)) continue
       const component: string[] = []
@@ -118,8 +151,11 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
       }
       visit(first)
       const anchored = anchoredOrder(component)
-      if (anchored) fixed.add(anchored)
-      blocks.push(anchored ?? walk)
+      const members = anchored ?? walk
+      const families = [
+        ...new Set(members.flatMap((id) => (familyOf.has(id) ? [familyOf.get(id)!] : []))),
+      ]
+      blocks.push({ members, fixed: anchored !== undefined, families })
     }
     return blocks
 
@@ -175,6 +211,64 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
     }
   }
 
+  /**
+   * Groups the units of a row into clusters: units sharing a family belong together, and a unit
+   * holding children of several families (a couple whose partners both have parents in the tree)
+   * joins those families into one cluster. Within a cluster the families are lined up by a
+   * depth-first walk over "partners from two families stand next to each other", starting from an
+   * end of that chain (the one whose parents come first, `rank`), so in a chain of families each
+   * joining couple can stand at the seam of two neighbouring blocks.
+   */
+  function clustersOf(units: Unit[]): Cluster[] {
+    const root = new Map<string, string>()
+    const find = (family: string): string => {
+      const parent = root.get(family)!
+      return parent === family ? family : find(parent)
+    }
+    for (const unit of units) for (const family of unit.families) root.set(family, family)
+    const neighbours = new Map<string, Set<string>>()
+    for (const unit of units) {
+      for (const family of unit.families.slice(1)) root.set(find(family), find(unit.families[0]!))
+      const joined = unit.members.flatMap((id) => (familyOf.has(id) ? [familyOf.get(id)!] : []))
+      for (let i = 1; i < joined.length; i++) {
+        const [a, b] = [joined[i - 1]!, joined[i]!]
+        if (a === b) continue
+        neighbours.set(a, (neighbours.get(a) ?? new Set()).add(b))
+        neighbours.set(b, (neighbours.get(b) ?? new Set()).add(a))
+      }
+    }
+    const byRank = (a: string, b: string) => rank.get(a)! - rank.get(b)!
+    const clusters: Cluster[] = []
+    const clusterOf = new Map<string, Cluster>()
+    for (const unit of units) {
+      if (unit.families.length === 0) {
+        clusters.push({ units: [unit], families: [] })
+        continue
+      }
+      const key = find(unit.families[0]!)
+      let cluster = clusterOf.get(key)
+      if (!cluster) {
+        cluster = { units: [], families: [] }
+        clusterOf.set(key, cluster)
+        clusters.push(cluster)
+      }
+      cluster.units.push(unit)
+    }
+    for (const cluster of clusters) {
+      const families = [...new Set(cluster.units.flatMap((u) => u.families))].sort(byRank)
+      const degree = (family: string) => neighbours.get(family)?.size ?? 0
+      const start = families.find((family) => degree(family) <= 1) ?? families[0]
+      const visit = (family: string) => {
+        cluster.families.push(family)
+        for (const next of [...(neighbours.get(family) ?? [])].sort(byRank)) {
+          if (!cluster.families.includes(next)) visit(next)
+        }
+      }
+      if (start) visit(start)
+    }
+    return clusters
+  }
+
   const position = new Map<string, number>()
   const refresh = (row: Row) => row.order.forEach((id, i) => position.set(id, i))
   for (const row of rows.values()) refresh(row)
@@ -194,65 +288,145 @@ export function orderNodes(graph: TreeGraph): TreeNode[] {
     return keys.length > 0 ? mean(keys) : undefined
   }
 
-  function reorder(row: Row, keyOf: (id: string) => number | undefined) {
-    const keyed = row.blocks.map((block) => {
-      const current = block.map((id) => position.get(id)!)
-      let members = block
-      if (!fixed.has(block)) {
-        if (current[0]! > current[current.length - 1]!) members = [...block].reverse()
-        const keys = members.map(keyOf)
-        let trend = 0
-        for (let i = 0; i < keys.length; i++) {
-          for (let j = i + 1; j < keys.length; j++) {
-            if (keys[i] !== undefined && keys[j] !== undefined)
-              trend += Math.sign(keys[j]! - keys[i]!)
-          }
-        }
-        if (trend < 0) members = [...members].reverse()
+  type KeyOf = (id: string) => number | undefined
+
+  /** Mean of the members' keys, or of their current positions when none of them has a key. */
+  const keyOfAll = (members: string[], keyOf: KeyOf) => {
+    const known = members.map(keyOf).filter((k): k is number => k !== undefined)
+    return known.length > 0 ? mean(known) : mean(members.map((id) => position.get(id)!))
+  }
+
+  /** A free unit keeps its current orientation unless its keys run the other way. */
+  function orient(unit: Unit, keyOf: KeyOf) {
+    if (unit.fixed) return
+    const current = unit.members.map((id) => position.get(id)!)
+    if (current[0]! > current[current.length - 1]!) unit.members = [...unit.members].reverse()
+    const keys = unit.members.map(keyOf)
+    let trend = 0
+    for (let i = 0; i < keys.length; i++) {
+      for (let j = i + 1; j < keys.length; j++) {
+        if (keys[i] !== undefined && keys[j] !== undefined) trend += Math.sign(keys[j]! - keys[i]!)
       }
-      const keys = members.map(keyOf)
-      const known = keys.filter((k): k is number => k !== undefined)
+    }
+    if (trend < 0) unit.members = [...unit.members].reverse()
+  }
+
+  /** A unit with the order its members take. */
+  type Placed = { unit: Unit; members: string[] }
+
+  /**
+   * The units of a cluster left to right (spec §6.4, sibling-block rules 1 and 2), each with its
+   * members in their new order. Every family in `cluster.families` gets one run of units in the
+   * birth order of its children in them, except that the units it shares with the next family in
+   * the walk stand at the run's end facing that family, so a joining couple stands at the seam.
+   * The runs go left to right or, mirrored, right to left (each run keeping its birth order).
+   * The direction comes from the first fixed-order unit joining two neighbouring families, else
+   * (with `preferBirthOrder`) from whichever direction leaves fewer siblings out of birth order,
+   * else from the keys of the first and the last family. A free joining unit turns so each
+   * partner faces their own family. Where one row cannot keep every family whole (a person
+   * joined to two other families, or a family joined to three), the walk's earlier families do.
+   */
+  function arrange(cluster: Cluster, keyOf: KeyOf, preferBirthOrder: boolean): Placed[] {
+    const families = cluster.families
+    if (families.length === 0) return cluster.units.map((unit) => ({ unit, members: unit.members }))
+    const birthIn = (unit: Unit, family: string) =>
+      Math.min(
+        ...unit.members.filter((id) => familyOf.get(id) === family).map((id) => rank.get(id)!),
+      )
+    const placed = new Set<Unit>()
+    const runs = families.map((family, i) => {
+      const next = families[i + 1]
+      const own = cluster.units
+        .filter((unit) => !placed.has(unit) && unit.families.includes(family))
+        .sort((a, b) => birthIn(a, family) - birthIn(b, family))
+      for (const unit of own) placed.add(unit)
+      const toNext = own.filter((unit) => next !== undefined && unit.families.includes(next))
+      return { rest: own.filter((unit) => !toNext.includes(unit)), toNext }
+    })
+
+    const lineUp = (mirror: boolean) => {
+      const units = mirror
+        ? [...runs].reverse().flatMap((run) => [...run.toNext, ...run.rest])
+        : runs.flatMap((run) => [...run.rest, ...run.toNext])
+      const sideOf = new Map(families.map((family, i) => [family, mirror ? -i : i]))
+      return units.map((unit) => {
+        if (unit.fixed || unit.families.length < 2) return { unit, members: unit.members }
+        const sides = unit.members.flatMap((id) =>
+          familyOf.has(id) ? [sideOf.get(familyOf.get(id)!)!] : [],
+        )
+        const turned = sides[0]! > sides[sides.length - 1]!
+        return { unit, members: turned ? [...unit.members].reverse() : unit.members }
+      })
+    }
+    /** Pairs of siblings standing against their birth order. */
+    const inversions = (placed: Placed[]) => {
+      const order = placed.flatMap((p) => p.members).filter((id) => familyOf.has(id))
+      let count = 0
+      for (let i = 0; i < order.length; i++) {
+        for (let j = i + 1; j < order.length; j++) {
+          const [a, b] = [order[i]!, order[j]!]
+          if (familyOf.get(a) === familyOf.get(b) && rank.get(a)! > rank.get(b)!) count++
+        }
+      }
+      return count
+    }
+
+    let mirror = anchoredDirection(cluster)
+    if (mirror === undefined && preferBirthOrder) {
+      const [forward, backward] = [inversions(lineUp(false)), inversions(lineUp(true))]
+      if (forward !== backward) mirror = backward < forward
+    }
+    if (mirror === undefined) {
+      const keyOfFamily = (family: string) =>
+        keyOfAll(
+          cluster.units.flatMap((unit) => unit.members.filter((id) => familyOf.get(id) === family)),
+          keyOf,
+        )
+      mirror = keyOfFamily(families[0]!) > keyOfFamily(families[families.length - 1]!)
+    }
+    return lineUp(mirror)
+  }
+
+  /**
+   * Whether the first unit with a fixed order that joins two neighbouring families of the walk
+   * has them the other way round; `undefined` without such a unit.
+   */
+  function anchoredDirection(cluster: Cluster): boolean | undefined {
+    const families = cluster.families
+    for (let i = 1; i < families.length; i++) {
+      const [left, right] = [families[i - 1]!, families[i]!]
+      const anchor = cluster.units.find(
+        (unit) => unit.fixed && unit.families.includes(left) && unit.families.includes(right),
+      )
+      if (!anchor) continue
+      const at = (family: string) => anchor.members.findIndex((id) => familyOf.get(id) === family)
+      return at(left) > at(right)
+    }
+    return undefined
+  }
+
+  function reorder(row: Row, keyOf: KeyOf, preferBirthOrder = false) {
+    for (const cluster of row.clusters) for (const unit of cluster.units) orient(unit, keyOf)
+    const keyed = row.clusters.map((cluster) => {
+      const placed = arrange(cluster, keyOf, preferBirthOrder)
+      for (const { unit, members } of placed) unit.members = members
+      const members = placed.flatMap((p) => p.members)
       return {
         members,
-        key: known.length > 0 ? mean(known) : mean(current),
+        key: keyOfAll(members, keyOf),
         rank: Math.min(...members.map((id) => rank.get(id)!)),
         component: componentOf.get(members[0]!)!,
       }
     })
     keyed.sort((a, b) => a.component - b.component || a.key - b.key || a.rank - b.rank)
-    row.blocks = enforceSiblingOrder(keyed.map((k) => k.members))
-    row.order = row.blocks.flat()
+    row.order = keyed.flatMap((k) => k.members)
     refresh(row)
-  }
-
-  /** Blocks holding children of one family are permuted among their slots into birth order. */
-  function enforceSiblingOrder(blocks: string[][]): string[][] {
-    const families = [...childrenOf.keys()].sort((a, b) => rank.get(a)! - rank.get(b)!)
-    const result = [...blocks]
-    for (let round = 0; round < blocks.length; round++) {
-      let changed = false
-      for (const family of families) {
-        const children = new Set(childrenOf.get(family))
-        const firstChild = (block: string[]) =>
-          Math.min(...block.filter((id) => children.has(id)).map((id) => rank.get(id)!))
-        const slots = result
-          .map((block, i) => (block.some((id) => children.has(id)) ? i : -1))
-          .filter((i) => i >= 0)
-        if (slots.length < 2) continue
-        const sorted = slots.map((i) => result[i]!).sort((a, b) => firstChild(a) - firstChild(b))
-        slots.forEach((slot, i) => {
-          if (result[slot] !== sorted[i]) changed = true
-          result[slot] = sorted[i]!
-        })
-      }
-      if (!changed) break
-    }
-    return result
   }
 
   const generations = [...rows.keys()].sort((a, b) => a - b)
   for (let sweep = 0; sweep < SWEEPS; sweep++) {
-    for (const g of generations.slice(1)) reorder(rows.get(g)!, parentKey)
+    // The first pass may turn a cluster to keep birth order; the parents then follow it.
+    for (const g of generations.slice(1)) reorder(rows.get(g)!, parentKey, sweep === 0)
     for (const g of generations.slice(0, -1).reverse()) reorder(rows.get(g)!, childKey)
   }
   for (const g of generations.slice(1)) reorder(rows.get(g)!, parentKey)
